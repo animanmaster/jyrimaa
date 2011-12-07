@@ -66,25 +66,30 @@ class Board:
 
     def __init__(self):
         '''Constructor: initialize the interal 2D array.'''
-        self.__spots = [[None] * 8 for i in range(8)]
+        self.spots = [[None] * 8 for i in range(8)]
+        self.piece_map = {}
 
     def place(self, piece, strPos):
         '''Place the given piece at the provided position (like "A4")'''
         row, col = convert(strPos)
-        oldpiece = self.__spots[row][col]
-        self.__spots[row][col] = piece
+        oldpiece = self.spots[row][col]
+        self.spots[row][col] = piece
+        self.piece_map[piece] = [row, col]
         return oldpiece
 
     def get_piece(self, pos):
         '''Return whatever is at the spot given by this position'''
         row, col = convert(pos)
-        return self.__spots[row][col]
+        return self.spots[row][col]
 
 
     def clear(self, position):
         '''Remove anything that may be on this spot'''
         row, col = convert(position)
-        self.__spots[row][col] = None
+        piece = self.spots[row][col]
+        self.spots[row][col] = None
+        if piece:
+            self.piece_map[piece] = None
     
 
     def apply_move(self, move):
@@ -111,7 +116,7 @@ class Board:
         line       = "  --------------- \n"
         board_str = "\n" + col_header + line
         for i in range(8, 0, -1):
-            row = self.__spots[i-1]
+            row = self.spots[i-1]
             board_str += str(i) + "|"
             for piece in row:
                 board_str += (piece or " ") + "|"
@@ -140,6 +145,7 @@ class GameDB:
             board.undo_move(Move(move))
 
     #TODO: This method needs to be cleaned up a bit. Too much repeated code.
+    #      Also, handle the case where we only want the setup.
     def retrieveBoard(self, gameID, turnID):
         board = Board()
         turns = self.get_movelist(gameID).split("\\n")
