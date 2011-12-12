@@ -4,11 +4,11 @@ import sqlite3
 #TODO: Optimize! Too many inefficiencies out of laziness. :P
 
 '''Map column index to column letter'''
-COLS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H']
+COLS = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h']
 
 def convert(strPos):
     '''Convert a string position to a row, col pair'''
-    return int(strPos[1]) - 1, COLS.index(strPos.upper()[0])
+    return int(strPos[1]) - 1, COLS.index(strPos.lower()[0])
 
 def make_position(row, col):
     '''Take a row, col pair and return the string representation'''
@@ -60,21 +60,38 @@ class Move:
         new_position = self.get_new_position(position, direction)
         return piece, position, direction, new_position
 
+class Position:
+    def __init__(self, row, col):
+        self.row, self.col = row, col
 
+    def __str__(self):
+        return make_position(self.row, self.col)
+
+class Piece:
+    def __init__(self, char, position):
+        self.char = str(char)[0]
+        self.position = position
+
+    def __str__(self):
+        return str(self.char) + str(self.position)
 
 class Board:
 
     def __init__(self):
         '''Constructor: initialize the interal 2D array.'''
         self.spots = [[None] * 8 for i in range(8)]
-        self.piece_map = {}
+        self.pieces = []
 
     def place(self, piece, strPos):
         '''Place the given piece at the provided position (like "A4")'''
         row, col = convert(strPos)
-        oldpiece = self.spots[row][col]
+        if isinstance(piece, str):
+            piece = Piece(piece, Position(row, col))
+
+        oldpiece = self.spots[row][col] #Hopefully this is None since we're removing it from the board.
         self.spots[row][col] = piece
-        self.piece_map[piece] = [row, col]
+        piece.position.row, piece.position.col = row, col
+        self.pieces.append(piece)
         return oldpiece
 
     def get_piece(self, pos):
@@ -89,22 +106,24 @@ class Board:
         piece = self.spots[row][col]
         self.spots[row][col] = None
         if piece:
-            self.piece_map[piece] = None
+            #self.piece_map[piece] = None
+            self.pieces.remove(piece)
+        return piece
     
 
     def apply_move(self, move):
         '''Apply a Move object to this board.'''
         oldpiece = self.get_piece(move.old_position)
         
-        if oldpiece != move.piece:
+        if oldpiece.char != move.piece:
             raise ValueError("Invalid move: the piece {0} is not at position {1}".format(piece, move.old_position))
         
         if move.direction != Direction.DEAD and self.get_piece(move.new_position):
             raise ValueError("Illegal move: a piece is on the new position {0}".format(move.new_position))
 
-        self.clear(move.old_position)
+        piece = self.clear(move.old_position)
         if move.direction != Direction.DEAD:
-            self.place(move.piece, move.new_position)
+            self.place(piece, move.new_position)
 
     def undo_move(self, move):
         '''Reverse a move and apply it.'''
@@ -119,7 +138,7 @@ class Board:
             row = self.spots[i-1]
             board_str += str(i) + "|"
             for piece in row:
-                board_str += (piece or " ") + "|"
+                board_str += ((piece and piece.char) or " ") + "|"
             board_str += str(i) + "\n" + line
         board_str += col_header
         return board_str

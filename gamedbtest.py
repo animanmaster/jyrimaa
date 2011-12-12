@@ -19,4 +19,7 @@ db = GameDB("./games.db")
 board = db.retrieveBoard(4, "26b")
 print board
 
-print board.piece_map
+for piece in board.pieces:
+    print piece
+
+
