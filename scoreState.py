@@ -59,28 +59,31 @@ def show_colored(board, aggro):
                    size = (400, 300)
                    )
 
-    board_colors = (Color(Color.white.red, Color.white.green, Color.white.blue, 128),
-                    Color(Color.black.red, Color.black.green, Color.black.blue, 128))
+    board_colors = (Color.white, Color.black)
+#    board_colors = (Color(Color.white.red, Color.white.green, Color.white.blue, 128),
+#                    Color(Color.black.red, Color.black.green, Color.black.blue, 128))
+    
+    def value_color(value):
+        #scaling it by 4 so that the colors are more discernible
+        return Color((value > 0) and max(0, int(255 - value * 4)) or 255, 255, (value < 0) and max(0, int(255 + value * 4)) or 255)
 
-    def label_maker(board_item, color, i, j):
-        value = aggro[i][j]
-        return JLabel(board_item and str(board_item)[0] or " ", None, JLabel.CENTER,
-                      opaque = True,
+    def common_label(display, i, j, value):
+        return JLabel(display, None, JLabel.CENTER,
                       border = BorderFactory.createLineBorder(Color.black),
                       toolTipText = make_position(i, j),
-                      #background = color)
-                      background = Color((value > 0) and max(0, int(255 - value * 4)) or 255, 255, (value < 0) and max(0, int(255 + value * 4)) or 255, 128))
+                      opaque = True,
+                      background = value_color(value))
+                    
+    def label_maker(board_item, color, i, j):
+        value = aggro[i][j]
+        return common_label(board_item and str(board_item)[0] or " ", i, j, value)
 
     frame.contentPane = JPanel(GridLayout(1,0, 10, 10))
 
     frame.contentPane.add(make_board_panel(board, board_colors, label_maker))
 
     def label_maker(value, color, i, j):
-        return JLabel("%.2f" % (value), None, JLabel.CENTER,
-                      border = BorderFactory.createLineBorder(Color.black),
-                      toolTipText = make_position(i, j),
-                      opaque = True,
-                      background = Color((value > 0) and max(0, int(255 - value * 4)) or 255, 255, (value < 0) and max(0, int(255 + value * 4)) or 255, 100))
+        return common_label("%.2f" % (value), i, j, value)
 
     frame.contentPane.add(make_board_panel(aggro, board_colors, label_maker))
 
@@ -88,7 +91,7 @@ def show_colored(board, aggro):
 
 
 
-db = GameDB("C:\\Users\\Malik Ahmed\\Dropbox\\Thesis\\gamedb\\games.db")
+db = GameDB("games.db")
 board = db.retrieveBoard(4, "26b")
 print board
 
