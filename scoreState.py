@@ -3,22 +3,64 @@ from javax.swing import BorderFactory, JFrame, JPanel, JLabel
 from java.awt import GridLayout, Color
 
 
-PIECES = ['E', 'M', 'H', 'D', 'C', 'R', 'e', 'm', 'h', 'd', 'c', 'r']
-AGGRO  = [ 32,  16,   8,   4,   2,   1, -32, -16,  -8,  -4,  -2,  -1]
+PIECES = ('E', 'M', 'H', 'D', 'C', 'R', 'e', 'm', 'h', 'd', 'c', 'r')
+AGGRO  = ( 32,  16,   8,   4,   2,   1, -32, -16,  -8,  -4,  -2,  -1)
+
+TRAPS = ((2,2), (2,5), (5,2), (5,5))
 
 PIECE_AGGRO = dict(zip(PIECES, AGGRO))
+
+def its_a_trap(row, col):
+    return ((row == 2 or row == 5) and (col == 2 or col == 5))
 
 def distance(position1, position2):
     return abs(position1.row - position2.row) + abs(position1.col - position2.col)
 
+def find_piece(board, row, col):
+    return (0 <= row <= 7 and 0 <= col <= 7 and board[row][col]) or None 
+
+def friend(piece, otherpiece):
+    return otherpiece and ((piece.char.isupper() and otherpiece.char.isupper()) or (piece.char.islower() and otherpiece.char.islower()))
+
+def surrounding_pieces(board, row, col):
+    return find_piece(board, row + 1, col), find_piece(board, row - 1, col), find_piece(board, row, col - 1), find_piece(board, row, col + 1)
+
+def forever_alone(piece, board):
+    row, col = piece.position.row, piece.position.col
+    above, below, left, right = surrounding_pieces(board, row, col)
+    return not (friend(piece, above) or friend(piece, below) or friend(piece, left) or friend(piece, right)) #no one around you? Forever alone.
+
+def frozen(piece, board):
+    row, col = piece.position.row, piece.position.col
+    myaggro = abs(PIECE_AGGRO[piece.char])
+    no_friends = forever_alone(piece, board)
+    isfrozen = False
+
+    if no_friends:
+
+        def other_piece_is_stronger(otherpiece):
+            return otherpiece and abs(PIECE_AGGRO[otherpiece.char]) > myaggro
+
+        isfrozen = (row > 0 and other_piece_is_stronger(board[row - 1][col])) or \
+                   (row < 7 and other_piece_is_stronger(board[row + 1][col])) or \
+                   (col > 0 and other_piece_is_stronger(board[row][col - 1])) or \
+                   (col < 7 and other_piece_is_stronger(board[row][col + 1]))
+
+    return isfrozen
+
+
 #THOUGHT: Each spot contains values for each piece, taking into account the pieces blocking the way and pieces that could freeze you.
 #TODO - Consider trap positions and capture patterns
+#ANOTHER THOUGHT (RELATED TO THE TODO): The trap exudes the sum(half the power of the piece it's next to?)
 
 # Mobility = 0 if frozen or surrounded by pieces that can't be pushed (?).
 # Examine the piece's AOI?
 # Higher mobility = higher freedom of movement.
 def mobility(piece, board):
     pieces = board.pieces
+    if frozen(piece, board):
+        return 0
+    
     for board_piece, position in pieces.iteritems():
         if board_piece != piece:
             pass
@@ -76,7 +118,7 @@ def show_colored(board, aggro):
                     
     def label_maker(board_item, color, i, j):
         value = aggro[i][j]
-        return common_label(board_item and str(board_item)[0] or " ", i, j, value)
+        return common_label(board_item and str(board_item)[0] or (its_a_trap(i, j) and "<html><font color='red'><b>X</b></font></html>") or " ", i, j, value)
 
     frame.contentPane = JPanel(GridLayout(1,0, 10, 10))
 
@@ -105,4 +147,8 @@ for row in aggro:
 show_colored(board, aggro)
 
 print aggro_str
+
+for piece in board.pieces:
+    if frozen(piece, board):
+        print piece, "is frozen."
 
