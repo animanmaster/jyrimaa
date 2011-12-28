@@ -1,14 +1,24 @@
 from gamedb import *
-from javax.swing import BorderFactory, JFrame, JPanel, JLabel
+from javax.swing import BorderFactory, JFrame, JPanel, JLabel, ImageIcon
+from javax.imageio import ImageIO
 from java.awt import GridLayout, Color
 
+IMAGE_DIR = './images/orig/'
 
 PIECES = ('E', 'M', 'H', 'D', 'C', 'R', 'e', 'm', 'h', 'd', 'c', 'r')
+IMAGES = ('GoldElephant.gif', 'GoldCamel.gif', 'GoldHorse.gif', 'GoldDog.gif', 'GoldCat.gif', 'GoldRabbit.gif', \
+          'SilverElephant.gif', 'SilverCamel.gif', 'SilverHorse.gif', 'SilverDog.gif', 'SilverCat.gif', 'SilverRabbit.gif')
 AGGRO  = ( 32,  16,   8,   4,   2,   1, -32, -16,  -8,  -4,  -2,  -1)
 
 TRAPS = ((2,2), (2,5), (5,2), (5,5))
 
 PIECE_AGGRO = dict(zip(PIECES, AGGRO))
+PIECE_IMAGE = dict(zip(PIECES, IMAGES))
+
+for piece, image_file in PIECE_IMAGE.iteritems():
+    PIECE_IMAGE[piece] = ImageIcon(IMAGE_DIR + image_file)
+
+PIECE_IMAGE[None] = None
 
 def its_a_trap(row, col):
     return ((row == 2 or row == 5) and (col == 2 or col == 5))
@@ -109,8 +119,8 @@ def show_colored(board, aggro):
         #scaling it by 4 so that the colors are more discernible
         return Color((value > 0) and max(0, int(255 - value * 4)) or 255, 255, (value < 0) and max(0, int(255 + value * 4)) or 255)
 
-    def common_label(display, i, j, value):
-        return JLabel(display, None, JLabel.CENTER,
+    def common_label(display, image_file, i, j, value):
+        return JLabel(display, image_file or None, JLabel.CENTER,
                       border = BorderFactory.createLineBorder(Color.black),
                       toolTipText = make_position(i, j),
                       opaque = True,
@@ -118,14 +128,14 @@ def show_colored(board, aggro):
                     
     def label_maker(board_item, color, i, j):
         value = aggro[i][j]
-        return common_label(board_item and str(board_item)[0] or (its_a_trap(i, j) and "<html><font color='red'><b>X</b></font></html>") or " ", i, j, value)
+        return common_label(board_item and "" or (its_a_trap(i, j) and "<html><font color='red'><b>X</b></font></html>" or ""), PIECE_IMAGE[board_item and board_item.char or None], i, j, value)
 
     frame.contentPane = JPanel(GridLayout(1,0, 10, 10))
 
     frame.contentPane.add(make_board_panel(board, board_colors, label_maker))
 
     def label_maker(value, color, i, j):
-        return common_label("%.2f" % (value), i, j, value)
+        return common_label("%.2f" % (value), None, i, j, value)
 
     frame.contentPane.add(make_board_panel(aggro, board_colors, label_maker))
 
