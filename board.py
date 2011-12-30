@@ -4,80 +4,13 @@
 __author__="Malik Ahmed"
 __date__ ="$Dec 26, 2011 2:33:58 AM$"
 
-
-'''Map column index to column letter'''
-COLS = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h']
-
-def convert(strPos):
-    '''Convert a string position to a row, col pair'''
-    return int(strPos[1]) - 1, COLS.index(strPos.lower()[0])
-
-def make_position(row, col):
-    '''Take a row, col pair and return the string representation'''
-    return COLS[col] + str(row + 1)
-
-class Direction:
-    NORTH = 'n'
-    SOUTH = 's'
-    WEST  = 'w'
-    EAST  = 'e'
-    DEAD  = 'x' #kind of a hack-job...
-
-def make_move(piece, position, direction):
-    return Move(piece + position + direction)
-
-
-class Move:
-    DIR_REVERSE = { Direction.NORTH : Direction.SOUTH,
-                    Direction.SOUTH : Direction.NORTH,
-                    Direction.WEST  : Direction.EAST,
-                    Direction.EAST  : Direction.WEST,
-                    Direction.DEAD  : Direction.DEAD} #kind of a hack-job...
-
-    DIR_OFFSET = {Direction.NORTH : (1, 0),
-                  Direction.WEST  : (0, -1),
-                  Direction.EAST  : (0, 1),
-                  Direction.SOUTH : (-1, 0),
-                  Direction.DEAD  : (0, 0)} #kind of a hack-job...
-
-    def __init__(self, move):
-        '''
-        Construct a Move object from the given move in Arimaa notation e.g. "ra5n"
-        '''
-        self.move = move
-        self.piece, self.old_position, self.direction, self.new_position = self.get_move_details(move)
-
-    def reverse(self):
-        return make_move(self.piece, self.new_position, Move.DIR_REVERSE[self.direction])
-
-    def get_new_position(self, position, direction):
-        row, col = convert(position)
-        row_offset, col_offset = Move.DIR_OFFSET[direction]
-        return make_position(row + row_offset, col + col_offset)
-
-    def get_move_details(self, move):
-        piece = move[0]
-        position = move[1:3]
-        direction = move[3]
-        new_position = self.get_new_position(position, direction)
-        return piece, position, direction, new_position
-
-class Position:
-    def __init__(self, row, col):
-        self.row, self.col = row, col
-
-    def __str__(self):
-        return make_position(self.row, self.col)
-
-class Piece:
-    def __init__(self, char, position):
-        self.char = str(char)[0]
-        self.position = position
-
-    def __str__(self):
-        return str(self.char) + str(self.position)
+from position import *
+from direction import *
+from move import *
+from piece import *
 
 class Board:
+    '''The board. Most of the public methods take strings to be directly accessible from AEI and for human consumption.'''
 
     def __init__(self):
         '''Constructor: initialize the interal 2D array.'''
@@ -147,3 +80,4 @@ class Board:
 
     def __getitem__(self, index):
         return self.spots[index]
+
