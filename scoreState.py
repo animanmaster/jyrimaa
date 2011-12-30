@@ -17,28 +17,12 @@ PIECE_IMAGE = dict(zip(PIECES, IMAGES))
 
 for piece, image_file in PIECE_IMAGE.iteritems():
     PIECE_IMAGE[piece] = ImageIcon(IMAGE_DIR + image_file)
-
 PIECE_IMAGE[None] = None
-
-def its_a_trap(row, col):
-    return ((row == 2 or row == 5) and (col == 2 or col == 5))
-
-def distance(position1, position2):
-    return abs(position1.row - position2.row) + abs(position1.col - position2.col)
-
-def find_piece(board, row, col):
-    return (0 <= row <= 7 and 0 <= col <= 7 and board[row][col]) or None 
-
-def friend(piece, otherpiece):
-    return otherpiece and ((piece.char.isupper() and otherpiece.char.isupper()) or (piece.char.islower() and otherpiece.char.islower()))
-
-def surrounding_pieces(board, row, col):
-    return find_piece(board, row + 1, col), find_piece(board, row - 1, col), find_piece(board, row, col - 1), find_piece(board, row, col + 1)
 
 def forever_alone(piece, board):
     row, col = piece.position.row, piece.position.col
-    above, below, left, right = surrounding_pieces(board, row, col)
-    return not (friend(piece, above) or friend(piece, below) or friend(piece, left) or friend(piece, right)) #no one around you? Forever alone.
+    above, below, left, right = board.surrounding_pieces(row, col)
+    return not (piece.friend_of(above) or piece.friend_of(below) or piece.friend_of(left) or piece.friend_of(right)) #no friends around you? Forever alone. :')
 
 def frozen(piece, board):
     row, col = piece.position.row, piece.position.col

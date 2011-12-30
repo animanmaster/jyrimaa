@@ -10,9 +10,20 @@ def make_position(row, col):
     '''Take a row, col pair and return the string representation'''
     return COLS[col] + str(row + 1)
 
+def distance(position1, position2): #just a convenience thang.
+    '''The distance between two position objects.'''
+    return abs(position1.row - position2.row) + abs(position1.col - position2.col)
+
+
 class Position:
     def __init__(self, row, col):
         self.row, self.col = row, col
+
+    def is_a_trap(self):
+        return ((self.row == 2 or self.row == 5) and (self.col == 2 or self.col == 5))
+
+    def distance(self, position2): 
+        return distance(self, position2)
 
     def __str__(self):
         return make_position(self.row, self.col)

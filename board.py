@@ -9,6 +9,9 @@ from direction import *
 from move import *
 from piece import *
 
+def its_a_trap(row, col):
+    return Position(row, col).is_a_trap()
+
 class Board:
     '''The board. Most of the public methods take strings to be directly accessible from AEI and for human consumption.'''
 
@@ -16,6 +19,14 @@ class Board:
         '''Constructor: initialize the interal 2D array.'''
         self.spots = [[None] * 8 for i in range(8)]
         self.pieces = []
+
+    def find_piece(self, row, col):
+        '''Return the piece at row, col or None if out of bounds.'''
+        return (0 <= row <= 7 and 0 <= col <= 7 and self[row][col]) or None 
+
+    def surrounding_pieces(self, row, col):
+        '''Return the pieces above, below, left, and, right of the spot (row, col).'''
+        return self.find_piece(row + 1, col), self.find_piece(row - 1, col), self.find_piece(row, col - 1), self.find_piece(row, col + 1)
 
     def place(self, piece, strPos):
         '''Place the given piece at the provided position (like "A4")'''
@@ -79,5 +90,6 @@ class Board:
         return board_str
 
     def __getitem__(self, index):
+        '''Allows us to use [] on a board.'''
         return self.spots[index]
 
