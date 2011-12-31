@@ -25,6 +25,13 @@ class Position:
     def distance(self, position2): 
         return distance(self, position2)
 
+    def __cmp__(self, other):
+        row_diff = self.row - other.row
+        col_diff = self.col - other.col
+
+        #If on the same row, return the column difference. In either case, if this piece is "before" the other piece, this piece is "less than" the other piece.
+        return row_diff or col_diff 
+
     def __str__(self):
         return make_position(self.row, self.col)
 
