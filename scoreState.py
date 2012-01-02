@@ -1,8 +1,8 @@
 from gamedb import *
 from visualize import *
 
-PIECES = ('E', 'M', 'H', 'D', 'C', 'R', 'e', 'm', 'h', 'd', 'c', 'r')
-AGGRO  = ( 32,  16,   8,   4,   2,   1, -32, -16,  -8,  -4,  -2,  -1)
+PIECES = ('E', 'M', 'H', 'D', 'C', 'R', 'e', 'm', 'h', 'd', 'c', 'r', None)
+AGGRO  = ( 32,  16,   8,   4,   2,   1, -32, -16,  -8,  -4,  -2,  -1, 0)
 
 TRAPS = ((2,2), (2,5), (5,2), (5,5))
 
@@ -41,12 +41,24 @@ def frozen(piece, board):
 # Higher mobility = higher freedom of movement.
 def mobility(piece, board):
     pieces = board.pieces
+    mobility = 0
+    row, col = piece.position.row, piece.position.col
     if frozen(piece, board):
-        return 0
+        return mobility
+    above, below, left, right = board.surrounding_pieces(row, col)
+    if above and below and left and right:
+        return mobility #there are pieces all around, can't move.
+    #count the number of paths available.
+    for rowOffset in range(-4, 4):
+        whatsleft = 4 - abs(rowOffset)
+        for colOffset in range(-whatsleft, whatsleft + 1):
+            if 0 <= row + rowOffset <= 7 and 0 <= col + colOffset <= 7 and not board.find_piece(row + rowOffset, col + colOffset):
+                mobility += 1 #found an empty spot in my mobility range
+
+    return mobility
     
-    for board_piece, position in pieces.iteritems():
-        if board_piece != piece:
-            pass
+#    for board_piece, position in pieces.iteritems():
+#        if board_piece != piece:
 
             
 
@@ -84,4 +96,5 @@ print aggro_str
 for piece in board.pieces:
     if frozen(piece, board):
         print piece, "is frozen."
+    print piece, "mobility =", mobility(piece, board)
 
