@@ -45,7 +45,7 @@ def value_color(value):
     #scaling it by 4 so that the colors are more discernible
     scale_factor = 4
     value *= scale_factor
-    default = 255
+    default = 0
     return Color((value > 0) and bounded(255 - value) or default,
                   default,
                   (value < 0) and bounded(255 + value) or default)

@@ -14,9 +14,14 @@ Note that you _can_ use just plain Python, but I'm using Swing for the GUI stuff
 
 Running
 -------
-`jython -J-cp sqlitejdbc-v056.jar scoreState.py`
+Make sure the sqlite jar is in your Java classpath when you run the scripts. If you don't wanna copy it to a global lib directory, do this:
 
-(Or put the sqlitejdbc-v056.jar in the Java classpath and just do `jython scoreState.py`)
+`jython -J-cp sqlitejdbc-v056.jar jyrimaa.py <game_id> <turn_id> [<path_to_db>]`
 
+where game_id and turn_id correspond to a game_id and turn_id from the database. If a path to the games.db file isn't provided, the script will try to use ./games.db.
+
+If you're in a bash shell, you can just do `./run jyrimaa.py <game_id> <turn_id> [<path_to_db>]` to save some typing.
+
+E.g.: `./run jyrimaa.py 4 26b`
 
 

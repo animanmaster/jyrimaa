@@ -78,23 +78,24 @@ def score(board):
     return aggro_map
 
 
-db = GameDB("games.db")
-board = db.retrieveBoard(4, "26b")
-print board
+if __name__ == "__main__":
+    db = GameDB("games.db")
+    board = db.retrieveBoard(16, "17b")
+    print board
 
-aggro = score(board)
-aggro_str = ""
-for row in aggro:
-    for val in row:
-        aggro_str += ("%.2f\t" % (val)).rjust(6)
-    aggro_str += "\n"
+    aggro = score(board)
+    aggro_str = ""
+    for row in aggro:
+        for val in row:
+            aggro_str += ("%.2f\t" % (val)).rjust(6)
+        aggro_str += "\n"
 
-show_colored(board, aggro)
+    show_colored(board, aggro)
 
-print aggro_str
+    print aggro_str
 
-for piece in board.pieces:
-    if frozen(piece, board):
-        print piece, "is frozen."
-    print piece, "mobility =", mobility(piece, board)
+    for piece in board.pieces:
+        if frozen(piece, board):
+            print piece, "is frozen."
+        print piece, "mobility =", mobility(piece, board)
 
