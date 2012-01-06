@@ -1,0 +1,56 @@
+def show_colored(board, aggro):
+
+    frame = JFrame("Board Visualization",
+                   defaultCloseOperation = JFrame.DISPOSE_ON_CLOSE,
+                   size = (400, 300)
+                   )
+
+    def label_maker(board_item, i, j):
+        value = aggro[i][j]
+        return common_label(its_a_trap(i, j) and "<html><font color='red'><b>X</b></font></html>" or "", 
+                            PIECE_IMAGE[board_item and board_item.char or None], i, j, value)
+
+    contentPanel = JPanel(GridLayout(1,0, 10, 10))
+    boardPanel = make_board_panel(board, label_maker))
+    contentPanel.add(boardPanel)
+
+    def label_maker(value, i, j):
+        return common_label("%.2f" % (value), None, i, j, value)
+
+    aggroPanel.add(make_board_panel(aggro, label_maker))
+    contentPanel.add(aggroPanel)
+
+    frame.contentPane = JScrollPane(contentPanel)
+
+    frame.pack()
+    frame.visible = True
+
+
+
+
+    def display(self, board=None, scorer=default_scorer, colorizer=checkerboard):
+        self.board = board or self.board
+        scored = scorer(self.board)
+
+
+        def label_maker(board_item, i, j):
+            value = aggro[i][j]
+            return common_label(its_a_trap(i, j) and "<html><font color='red'><b>X</b></font></html>" or "", 
+                                PIECE_IMAGE[board_item and board_item.char or None], i, j, value)
+
+        contentPanel = JPanel(GridLayout(1,0, 10, 10))
+        boardPanel = make_board_panel(board, label_maker))
+        contentPanel.add(boardPanel)
+
+        def label_maker(value, i, j):
+            return common_label("%.2f" % (value), None, i, j, value)
+
+        aggroPanel.add(make_board_panel(aggro, label_maker))
+        contentPanel.add(aggroPanel, 
+
+        frame.pack()
+        frame.visible = True
+            
+
+            
+

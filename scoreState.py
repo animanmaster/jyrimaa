@@ -1,5 +1,4 @@
 from gamedb import *
-from visualize import *
 
 PIECES = ('E', 'M', 'H', 'D', 'C', 'R', 'e', 'm', 'h', 'd', 'c', 'r', None)
 AGGRO  = ( 32,  16,   8,   4,   2,   1, -32, -16,  -8,  -4,  -2,  -1, 0)
@@ -75,27 +74,5 @@ def score(board):
                 dist = distance(current_pos, piece.position)
                 if dist <= 4:
                     aggro_map[i][j] += float(PIECE_AGGRO[piece.char])/(dist + 1.0)
+                piece.mobility = mobility(piece, board)
     return aggro_map
-
-
-if __name__ == "__main__":
-    db = GameDB("games.db")
-    board = db.retrieveBoard(16, "17b")
-    print board
-
-    aggro = score(board)
-    aggro_str = ""
-    for row in aggro:
-        for val in row:
-            aggro_str += ("%.2f\t" % (val)).rjust(6)
-        aggro_str += "\n"
-
-    show_colored(board, aggro)
-
-    print aggro_str
-
-    for piece in board.pieces:
-        if frozen(piece, board):
-            print piece, "is frozen."
-        print piece, "mobility =", mobility(piece, board)
-

@@ -1,16 +1,15 @@
-from scoreState import *
+from visualize import *
 from sys import argv
 import time #I just imported time, itself! :O
 
 __author__="Malik Ahmed"
 __date__ ="$Dec 26, 2011 1:41:57 AM$"
 
-def usage():
+def oldusage():
     print "usage:", argv[0], " game_id turn_number [/path/to/games.db]"
     print "\tEx:", argv[0], " 4 26b ./games.db"
 
-
-if __name__ == "__main__":
+def oldmain():
     if len(argv) < 3:
         usage()
     else:
@@ -43,4 +42,8 @@ if __name__ == "__main__":
             print piece, "mobility =", mobility(piece, board)
 
 
+def main():
+    sandbox = ScoringSandbox()
 
+if __name__ == "__main__":
+    main()

@@ -13,6 +13,7 @@ class GameDB:
 #            self.conn = sqlite3.connect(strDb)
 #            self.cursor = self.conn.cursor()
             Class.forName("org.sqlite.JDBC");
+            self.dbfile = strDb
             self.conn = DriverManager.getConnection("jdbc:sqlite:" + strDb)
             self.stat = self.conn.createStatement()
         else:
@@ -27,12 +28,12 @@ class GameDB:
 
     def takeback(self, turn):
         for move in self.get_moves(turn):
-            board.undo_move(Move(move))
+            self.board.undo_move(Move(move))
 
     #TODO: This method needs to be cleaned up a bit. Too much repeated code.
     #      Also, handle the case where we only want the setup.
     def retrieveBoard(self, gameID, turnID):
-        board = Board()
+        self.board = Board()
         turns = self.get_movelist(gameID).split("\\n")
         turnNum = 0
         setting_up = True
@@ -50,7 +51,7 @@ class GameDB:
                         #undo last turn
                         self.takeback(turns[turnNum - 1])
                     else:
-                        board.place(move[0], move[1:])
+                        self.board.place(move[0], move[1:])
                 turnNum += 1
 
         #Apply moves
@@ -68,8 +69,8 @@ class GameDB:
                         #undo last turn
                         self.takeback(turns[turnNum - 1])
                     else:
-                        board.apply_move(Move(move))
+                        self.board.apply_move(Move(move))
                 turnNum += 1
 
-        return board
+        return self.board
 
