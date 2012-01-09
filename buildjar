@@ -1,0 +1,4 @@
+cp *.py Jarify/src/.
+cd Jarify
+ant
+cp *.jar ..
