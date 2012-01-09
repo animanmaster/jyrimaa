@@ -1,14 +1,19 @@
-from javax.swing import BorderFactory, JFrame, JPanel, JLabel, ImageIcon, JScrollPane, JTextArea, JTextField, JButton, JSplitPane
+from javax.swing import BorderFactory, JFrame, JPanel, JLabel, ImageIcon, JScrollPane, JTextArea, JTextField, JButton, JSplitPane, JFileChooser, JOptionPane
+from javax.swing.filechooser import FileNameExtensionFilter
 from javax.imageio import ImageIO
 from java.awt import BorderLayout, GridLayout, Color
-from java.awt.event import FocusListener
+from java.awt.event import FocusListener, MouseAdapter 
 from java.awt.image import BufferedImage
 from java.io import File
 
-# :/ I don't really like this here.
-import scoreState
-from scoreState import *    # I MADE IT WORSE! THIS IMPLICITLY IMPORTS ALL THE OTHER STUFF! I'M A HORRIBLE PERSON! D:
+import sys
 
+from gamedb import *
+
+#YAY I GOT RID OF THE AWFULNESS! :D
+filechooser = JFileChooser();
+pyfilter = FileNameExtensionFilter("Python script", ["py"])
+dbfilter = FileNameExtensionFilter("Games Database", ["db"])
 
 IMAGE_DIR = './images/orig/'
 PIECES = ('E', 'M', 'H', 'D', 'C', 'R', 'e', 'm', 'h', 'd', 'c', 'r')
@@ -27,7 +32,6 @@ PIECE_IMAGE[None] = None
 
 
 
-#TODO - fix this mess! show_colored should be moved out of here, I think.
 # This module should only have helpers like make_board_panel and maybe some
 # classes for different view thingies.
 
@@ -50,7 +54,6 @@ def value_color(value, i = None, j = None):
                   default,
                   (value < 0) and bounded(255 + value) or default)
 
-                    
 def common_label(display, image_file, i, j, value, colorizer):
     return JLabel(display, image_file or None, JLabel.CENTER,
                   border = BorderFactory.createLineBorder(Color.black),
@@ -64,7 +67,7 @@ def eight_by_eight_of(things):
     return [ [things] * 8 for i in range(8) ]
 
 def checkerboard(_, row, col):
-    return row % 2 and (col % 2 and Color.BLACK or Color.WHITE) or (col % 2 and Color.WHITE or Color.BLACK)
+    return row % 2 and (col % 2 and Color.GREEN or Color.WHITE) or (col % 2 and Color.WHITE or Color.GREEN)
 
 def default_scorer(board):
     return eight_by_eight_of(0)
@@ -82,7 +85,7 @@ def textfield(text = "", actionListener = None):
 
 class ScoringSandbox:
 
-    def __init__(self, db = "./games.db", gameid = None, turnid = None, scoringModule = scoreState):
+    def __init__(self, db = "./games.db", gameid = None, turnid = None, scoringModule = "./scoreState.py"):
         self.frame = JFrame("Scoring Sandbox",
                             defaultCloseOperation = JFrame.DISPOSE_ON_CLOSE,
                             size = (400, 300)
@@ -91,12 +94,13 @@ class ScoringSandbox:
         self.gamedb = GameDB(db)
         self.gameid = gameid
         self.turnid = turnid
+        self.score = None
         if gameid and turnid:
             self.board = gamedb.retrieveBoard(gameid, turnid)
         else:
             self.board = Board()
         self.scoringModule = scoringModule
-        self.score = scoringModule and scoringModule.score or default_scorer
+        self.read(scoringModule)
         self.initGui()
         self.display()
 
@@ -105,8 +109,11 @@ class ScoringSandbox:
             value = self.scores[i][j]
             label = common_label(its_a_trap(i, j) and "<html><font color='red'><b>X</b></font></html>" or "", 
                                 PIECE_IMAGE[board_item and board_item.char or None], i, j, value, colorizer)
+            label.toolTipText += " (value = %.2f)" % value
             if board_item:
                 tooltip = "<html><table>"
+                tooltip += "<tr><td>Value:</td><td>%.2f</td></tr>" % value
+                tooltip += "<tr><td colspan=2><b>Piece Attributes:</td></tr>"
                 for attr, value in board_item.__dict__.iteritems():
                     tooltip += "<tr><td>" + attr.capitalize() + ":</td><td>" + str(value) + "</td></tr>"
                 label.toolTipText = tooltip + "</table></html>"
@@ -120,8 +127,40 @@ class ScoringSandbox:
         else:
             return number_label_maker
 
+    def get_scorer(self, code = None):
+        if code: 
+            exec(code)
+            scorer = score
+        else:
+            scorer = self.score or default_scorer
+        return scorer
+
+    def get_colorizer(self):
+        return value_color #self.get_scorer() != default_scorer and value_color or checkerboard
+
+    def read(self, filename):
+        try:
+            code = open(filename).read()
+            self.score = self.get_scorer(code)
+            return code
+        except:
+            print sys.exc_info()
+            return None
+        
+
+    def save(self, txt, filename):
+        f = open(filename, "w")
+        f.write(txt)
+        f.close()
         
     def initGui(self):
+        def reloadButton():
+            button = JButton("Reload")
+            def reload(evt):
+                self.reload()
+            button.addActionListener(reload)
+            return button
+
         def make_game_selector():
             self.gameChanger = False
             def dbChange(evt):
@@ -137,13 +176,28 @@ class ScoringSandbox:
                     self.turnid = evt.source.text
                     self.gameChanger = True
 
+            class ML(MouseAdapter):
+                def mouseClicked(ml_instance,evt):
+                    filechooser.setFileFilter(dbfilter)
+                    if(filechooser.showOpenDialog(self.frame) == JFileChooser.APPROVE_OPTION):
+                        evt.source.text = filechooser.getSelectedFile().getPath()
+                        try:
+                            self.gamedb = GameDB(evt.source.text)
+                        except:
+                            self.error("Error loading database: " + sys.exc_info())
+                        self.gameChanger = True
+
             selector = JPanel()
             selector.add(JLabel("DB:"))
-            selector.add(textfield(self.gamedb.dbfile, dbChange))
+            #selector.add(textfield(self.gamedb.dbfile, dbChange))
+            button = JButton("Choose DB")
+            button.addMouseListener(ML())
+            selector.add(button)
             selector.add(JLabel("Game ID:"))
             selector.add(textfield(self.gameid, idChange))
             selector.add(JLabel("Turn ID:"))
             selector.add(textfield(self.turnid, turnChange))
+            selector.add(reloadButton())
             return JScrollPane(selector)
 
         def make_content_panel():
@@ -151,45 +205,57 @@ class ScoringSandbox:
             self.render()
             return JScrollPane(self.contentPanel)
 
-        def save(self, txt, filename):
-            pass
-            
         def make_code_editor():
-            import inspect
             panel = JPanel(BorderLayout(2,2))
             self.codeArea = JTextArea()
-            self.codeArea.text = self.scoringModule and inspect.getsource(self.scoringModule) or ""
+            self.codeArea.text = self.scoringModule and self.read(self.scoringModule) or ""
             panel.add(JScrollPane(self.codeArea), BorderLayout.CENTER)
+            buttonpanel = JPanel(GridLayout(1,0, 2,2))
+            button = JButton("Open File")
+            def open_file(e):
+                filechooser.setFileFilter(pyfilter)
+                if(filechooser.showOpenDialog(self.frame) == JFileChooser.APPROVE_OPTION):
+                    self.scoringModule = filechooser.getSelectedFile().getPath()
+                    self.codeArea.text = self.read(self.scoringModule)
+            button.addActionListener(open_file)
+            buttonpanel.add(button)
+            button = JButton("Save File")
+            def save_file(e):
+                if (filechooser.showSaveDialog(self.frame) == JFileChooser.APPROVE_OPTION):
+                    self.scoringModule = filechooser.getSelectedFile().getPath()
+                    self.save(self.codeArea.text, self.scoringModule)
+            button.addActionListener(save_file)
+            buttonpanel.add(button)
+            panel.add(buttonpanel, BorderLayout.SOUTH)
             return panel
 
         self.frame.contentPane.add(make_game_selector(), BorderLayout.NORTH)
-#        self.frame.contentPane.add(make_content_panel(), BorderLayout.WEST)
-#        self.frame.contentPane.add(make_code_editor(),   BorderLayout.CENTER)
         pane = JSplitPane(JSplitPane.HORIZONTAL_SPLIT, make_content_panel(), make_code_editor())
         pane.setDividerLocation(self.frame.width/2)
-        self.frame.contentPane.add(pane)
-        reloadButton = JButton("Reload")
-        def reload(evt):
-            self.reload()
-        reloadButton.addActionListener(reload)
-        self.frame.contentPane.add(reloadButton, BorderLayout.SOUTH)
+        self.frame.contentPane.add(pane, BorderLayout.CENTER)
+        self.frame.contentPane.add(reloadButton(), BorderLayout.SOUTH)
 
     def render(self):
-        self.scorer, self.colorizer = self.score and (self.score, value_color) or (default_scorer, checkerboard)
-        self.scores = self.scorer(self.board)
+        self.score, self.colorizer = (self.get_scorer(), self.get_colorizer())
+        self.scores = self.score(self.board)
         self.contentPanel.removeAll()
         self.contentPanel.add(make_board_panel(self.board, self.label_maker(True), self.colorizer))
         self.contentPanel.add(make_board_panel(self.scores, self.label_maker(False), self.colorizer))
         self.contentPanel.revalidate()
 
     def reload(self):
-        if self.gameChanger:
-            self.board = self.gamedb.retrieveBoard(self.gameid, self.turnid)
-            self.scores = self.score(self.board)
-            self.gameChanger = False
-        exec(self.codeArea.text)
-        self.score = score
-        self.render()
+        try:
+            if self.gameChanger:
+                self.board = self.gamedb.retrieveBoard(self.gameid, self.turnid)
+                self.gameChanger = False
+            self.score = self.get_scorer(self.codeArea.text)
+            self.render()
+        except:
+            self.error("An Exception Occurred: " + str(sys.exc_info()))
+
+    def error(message):
+        JOptionPane.showMessageDialog(self.frame, message, "Error", JOptionPane.ERROR_MESSAGE)
+
 
     def display(self):
         self.frame.pack()
