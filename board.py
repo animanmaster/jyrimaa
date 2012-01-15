@@ -59,17 +59,21 @@ class Board:
 
     def apply_move(self, move):
         '''Apply a Move object to this board.'''
-        oldpiece = self.get_piece(move.old_position)
+        #TODO shouldn't have to distinguish between a placement and a move.
+        if move.direction == Direction.ALIVE:
+            self.place(move.piece, move.old_position)
+        else: 
+            oldpiece = self.get_piece(move.old_position)
 
-        if oldpiece.char != move.piece:
-            raise ValueError("Invalid move: the piece {0} is not at position {1}".format(piece, move.old_position))
+            if oldpiece.char != move.piece:
+                raise ValueError("Invalid move: the piece {0} is not at position {1}".format(piece, move.old_position))
 
-        if move.direction != Direction.DEAD and self.get_piece(move.new_position):
-            raise ValueError("Illegal move: a piece is on the new position {0}".format(move.new_position))
+            if move.direction != Direction.DEAD and self.get_piece(move.new_position):
+                raise ValueError("Illegal move: a piece is on the new position {0}".format(move.new_position))
 
-        piece = self.clear(move.old_position)
-        if move.direction != Direction.DEAD:
-            self.place(piece, move.new_position)
+            piece = self.clear(move.old_position)
+            if move.direction != Direction.DEAD:
+                self.place(piece, move.new_position)
 
     def undo_move(self, move):
         '''Reverse a move and apply it.'''

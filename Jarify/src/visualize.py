@@ -127,6 +127,12 @@ class ScoringSandbox:
         else:
             return number_label_maker
 
+    def parse_code(code):
+        exec(code)
+        print "score" in locals()
+        self.score = score if "score" in locals() else default_scorer
+        self.colorizer = colorizer if "colorizer" in locals() else value_color
+
     def get_scorer(self, code = None):
         if code: 
             exec(code)
@@ -136,7 +142,7 @@ class ScoringSandbox:
         return scorer
 
     def get_colorizer(self):
-        return value_color #self.get_scorer() != default_scorer and value_color or checkerboard
+        return "colorizer" in locals() and colorizer or value_color #self.get_scorer() != default_scorer and value_color or checkerboard
 
     def read(self, filename):
         try:
@@ -221,6 +227,7 @@ class ScoringSandbox:
             buttonpanel.add(button)
             button = JButton("Save File")
             def save_file(e):
+                filechooser.setFileFilter(pyfilter)
                 if (filechooser.showSaveDialog(self.frame) == JFileChooser.APPROVE_OPTION):
                     self.scoringModule = filechooser.getSelectedFile().getPath()
                     self.save(self.codeArea.text, self.scoringModule)
@@ -253,7 +260,7 @@ class ScoringSandbox:
         except:
             self.error("An Exception Occurred: " + str(sys.exc_info()))
 
-    def error(message):
+    def error(self, message):
         JOptionPane.showMessageDialog(self.frame, message, "Error", JOptionPane.ERROR_MESSAGE)
 
 

@@ -53,8 +53,9 @@ def score(board):
             for colOffset in range(-whatsleft, whatsleft + 1):
                 if 0 <= row + rowOffset <= 7 and 0 <= col + colOffset <= 7 and not board.find_piece(row + rowOffset, col + colOffset):
                     mobility += 1 #found an empty spot in my mobility range
-
+        
         return mobility
+
 
     def trap_influence(position):
         influence = 0.0
@@ -63,7 +64,19 @@ def score(board):
                 neighboring_pieces = board.surrounding_pieces(position.row, position.col)
                 for piece in neighboring_pieces:
                     influence += PIECE_AGGRO[piece and piece.char or None]/4
-        return influence                    
+        return influence
+            
+    def explore(row, col, resources_left, initial = True):
+        piece_exists = board.find_piece(row, col)
+        count = 0 if (initial or piece_exists) else 1
+        if initial or (resources_left and not piece_exists):
+            resources_left -= 1
+            count += explore(row - 1, col, resources_left, False)   #below
+            count += explore(row, col - 1, resources_left, False)   #left
+            count += explore(row, col + 1, resources_left, False)   #right
+            count += explore(row + 1, col, resources_left, False)   #above
+        return count
+            
 
 # ACTUAL SCORING HAPPENS HERE:
 # def score(board):
@@ -82,7 +95,9 @@ def score(board):
                     aggro_map[i][j] += float(PIECE_AGGRO[piece.char])/(dist + 1.0) #+ trap_influence(current_pos)
     #Give each piece a mobility
     for piece in pieces:
-        piece.mobility = mobility(piece)
+        row = piece.position.row
+        col = piece.position.col
+        piece.mobility = explore(row, col, 4) #mobility(piece)
     
     # Return the scored board
     return aggro_map

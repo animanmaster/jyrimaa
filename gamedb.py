@@ -27,7 +27,11 @@ class GameDB:
         return turn.split(" ")
 
     def takeback(self, turn):
-        for move in self.get_moves(turn):
+        moves = self.get_moves(turn)
+        print "Taking back", moves.pop(0), moves
+        moves.reverse()
+        print "Ordered:", moves
+        for move in moves:
             self.board.undo_move(Move(move))
 
     #TODO: This method needs to be cleaned up a bit. Too much repeated code.
@@ -36,41 +40,72 @@ class GameDB:
         self.board = Board()
         turns = self.get_movelist(gameID).split("\\n")
         turnNum = 0
-        setting_up = True
 
-        #Place initial pieces
-        while setting_up:
-            moves = self.get_moves(turns[turnNum])
-            turn_id = moves.pop(0) #gives us the turn number and player color e.g. "1w"
+        if int(turnID[0]) * (turnID[1] == 'w' and 1 or 2) > len(turns):
+            raise ValueError("Turn ID exceeds number of turns for Game %d" % gameID)
 
-            if int(turn_id[0]) > 1:
-                setting_up = False
-            else:
-                for move in moves:
-                    if move == "takeback":
-                        #undo last turn
-                        self.takeback(turns[turnNum - 1])
-                    else:
-                        self.board.place(move[0], move[1:])
-                turnNum += 1
+        done = False
+        
+        def is_placement(move):
+            return len(move) == 3 #e.g. ra3
 
-        #Apply moves
-        setting_up = True
-        while setting_up:
+        while turnNum < len(turns) and not done:
             moves = self.get_moves(turns[turnNum])
             turn_id = moves.pop(0)
-
             if turn_id == turnID:
-                setting_up = False
+                done = True
             else:
                 for move in moves:
-                    #print "Applying", move
                     if move == "takeback":
                         #undo last turn
                         self.takeback(turns[turnNum - 1])
+                    elif is_placement(move):
+                        #Place initial pieces
+                        self.board.place(move[0], move[1:])
                     else:
+                        #Apply moves
                         self.board.apply_move(Move(move))
                 turnNum += 1
 
+        if not done:
+            raise ValueError("Invalid Turn ID provided.")
+        
         return self.board
+        
+
+        # #Place initial pieces
+        # while setting_up:
+        #     moves = self.get_moves(turns[turnNum])
+        #     turn_id = moves.pop(0) #gives us the turn number and player color e.g. "1w"
+
+        #     if int(turn_id[0]) > 1:
+        #         setting_up = False
+        #     else:
+        #         for move in moves:
+        #             if move == "takeback":
+        #                 #undo last turn
+        #                 self.takeback(turns[turnNum - 1])
+        #             else:
+        #                 self.board.place(move[0], move[1:])
+        #         turnNum += 1
+
+        # #Apply moves
+        # setting_up = True
+        # while setting_up:
+        #     moves = self.get_moves(turns[turnNum])
+        #     turn_id = moves.pop(0)
+
+        #     if turn_id == turnID:
+        #         setting_up = False
+        #     else:
+        #         for move in moves:
+        #             #print "Applying", move
+        #             if move == "takeback":
+        #                 #undo last turn
+        #                 self.takeback(turns[turnNum - 1])
+        #             else:
+        #                 self.board.apply_move(Move(move))
+        #         turnNum += 1
+
+        # return self.board
 

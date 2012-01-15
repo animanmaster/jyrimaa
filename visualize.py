@@ -1,12 +1,13 @@
-from javax.swing import BorderFactory, JFrame, JPanel, JLabel, ImageIcon, JScrollPane, JTextArea, JTextField, JButton, JSplitPane, JFileChooser, JOptionPane
+from javax.swing import *
 from javax.swing.filechooser import FileNameExtensionFilter
 from javax.imageio import ImageIO
 from java.awt import BorderLayout, GridLayout, Color
-from java.awt.event import FocusListener, MouseAdapter 
+from java.awt.event import FocusListener, MouseAdapter, MouseEvent
 from java.awt.image import BufferedImage
 from java.io import File
 
 import sys
+import traceback
 
 from gamedb import *
 
@@ -95,28 +96,66 @@ class ScoringSandbox:
         self.gameid = gameid
         self.turnid = turnid
         self.score = None
+        self.colorizer = None
         if gameid and turnid:
             self.board = gamedb.retrieveBoard(gameid, turnid)
         else:
             self.board = Board()
         self.scoringModule = scoringModule
         self.read(scoringModule)
-        self.initGui()
+        self.initGui() 
         self.display()
 
     def label_maker(self, is_board_label):
+
         def board_label_maker(board_item, i, j, colorizer):
             value = self.scores[i][j]
             label = common_label(its_a_trap(i, j) and "<html><font color='red'><b>X</b></font></html>" or "", 
                                 PIECE_IMAGE[board_item and board_item.char or None], i, j, value, colorizer)
             label.toolTipText += " (value = %.2f)" % value
             if board_item:
+                #Informative tooltip!
                 tooltip = "<html><table>"
                 tooltip += "<tr><td>Value:</td><td>%.2f</td></tr>" % value
                 tooltip += "<tr><td colspan=2><b>Piece Attributes:</td></tr>"
                 for attr, value in board_item.__dict__.iteritems():
                     tooltip += "<tr><td>" + attr.capitalize() + ":</td><td>" + str(value) + "</td></tr>"
                 label.toolTipText = tooltip + "</table></html>"
+
+            #Action Popup!
+            def make_action(piece, position, direction):
+                def actionlistener(e):
+                    try:
+                        move = Move(piece + position + direction)
+                        self.board.apply_move(move)
+                        self.reload()
+                    except:
+                        print sys.exc_info()
+                        self.error("Error applying move - " + str(sys.exc_info()))
+                return actionlistener
+
+            popup = JPopupMenu()
+            pos = make_position(i, j)
+            if board_item:
+                menu = JMenu("Move")
+                if i < 8: menu.add(JMenuItem("Up", actionPerformed=make_action(board_item.char, pos, Direction.NORTH)))
+                if j > 0: menu.add(JMenuItem("Left", actionPerformed=make_action(board_item.char, pos, Direction.WEST)))
+                if i > 0: menu.add(JMenuItem("Down", actionPerformed=make_action(board_item.char, pos, Direction.SOUTH)))
+                if j < 8: menu.add(JMenuItem("Right", actionPerformed=make_action(board_item.char, pos, Direction.EAST)))
+                popup.add(menu)
+                popup.add(JMenuItem("Clear", actionPerformed=make_action(board_item.char, pos, Direction.DEAD)))
+            else:
+                menu = JMenu("Place")
+                for piece_char in PIECES:
+                    menu.add(JMenuItem(piece_char, PIECE_IMAGE[piece_char], actionPerformed=make_action(piece_char, pos, Direction.ALIVE)))
+                popup.add(menu)
+
+            class Popupper(MouseAdapter):
+                def mouseClicked(m, e):
+                    if e.button != MouseEvent.BUTTON1: popup.show(e.component, e.x, e.y)
+
+            label.addMouseListener(Popupper())
+
             return label
 
         def number_label_maker(value, i, j, colorizer):
@@ -127,16 +166,19 @@ class ScoringSandbox:
         else:
             return number_label_maker
 
+    def parse_code(self, code):
+        exec(code)
+        self.score = score if "score" in locals() else default_scorer
+        self.colorizer = colorizer if "colorizer" in locals() else value_color
+
     def get_scorer(self, code = None):
         if code: 
-            exec(code)
-            scorer = score
-        else:
-            scorer = self.score or default_scorer
+            self.parse_code(code)
+        scorer = self.score or default_scorer
         return scorer
 
     def get_colorizer(self):
-        return value_color #self.get_scorer() != default_scorer and value_color or checkerboard
+        return self.colorizer or value_color #self.get_scorer() != default_scorer and value_color or checkerboard
 
     def read(self, filename):
         try:
@@ -221,6 +263,7 @@ class ScoringSandbox:
             buttonpanel.add(button)
             button = JButton("Save File")
             def save_file(e):
+                filechooser.setFileFilter(pyfilter)
                 if (filechooser.showSaveDialog(self.frame) == JFileChooser.APPROVE_OPTION):
                     self.scoringModule = filechooser.getSelectedFile().getPath()
                     self.save(self.codeArea.text, self.scoringModule)
@@ -248,12 +291,15 @@ class ScoringSandbox:
             if self.gameChanger:
                 self.board = self.gamedb.retrieveBoard(self.gameid, self.turnid)
                 self.gameChanger = False
-            self.score = self.get_scorer(self.codeArea.text)
+            #self.score = self.get_scorer(self.codeArea.text)
+            self.parse_code(self.codeArea.text)
             self.render()
         except:
             self.error("An Exception Occurred: " + str(sys.exc_info()))
 
-    def error(message):
+    def error(self, message):
+        print sys.exc_info()
+        traceback.print_tb(sys.exc_info()[2])
         JOptionPane.showMessageDialog(self.frame, message, "Error", JOptionPane.ERROR_MESSAGE)
 
 
