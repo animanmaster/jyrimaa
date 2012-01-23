@@ -10,6 +10,7 @@ def colorizer(value, i = None, j = None):
                   (value < 0) and bounded(255 + value) or default)
 
 
+
 def score(board):
     PIECES = ('E', 'M', 'H', 'D', 'C', 'R', 'e', 'm', 'h', 'd', 'c', 'r', None)
     AGGRO  = ( 32,  16,   8,   4,   2,   1, -32, -16,  -8,  -4,  -2,  -1, 0)
@@ -90,6 +91,54 @@ def score(board):
                 count += explore(piece, row + 1, col, resources_left, False)   #above
         #else see if you can push/pull?
         return count
+
+    def is_gold(piece):
+        return piece.char.isupper()
+
+    def is_silver(piece):
+        return piece.char.islower()
+
+    def insert(arr, value, compare):
+        if len(arr) == 0:
+            arr.append(value)
+        else:
+            # TODO binary search for index, then insert.
+            i = 0
+            while i < len(arr) and compare(value, arr[i]) < 0:
+                i += 1
+            if i == len(arr):
+                arr.append(value)
+            else:
+                rest = arr[i:]
+                arr[i] = value
+                arr[i+1:] = rest
+
+
+    def decide(aggro):
+        pieces_in_danger = []
+        safest_gold_spots = []
+        safest_silver_spots = []
+
+        for piece in board.pieces:
+            row, col = piece.position.row, piece.position.col
+            spot_value = aggro[row][col]
+            if (is_gold(piece) and spot_value < 0) or (is_silver(piece) and spot_value > 0): #and abs(spot_value) >= PIECE_AGGRO(piece.char)
+                pieces_in_danger.append(piece)
+        
+        print "In Danger:", pieces_in_danger
+        
+        most_positive_first = lambda v1, v2: aggro[v2.row][v2.col]-aggro[v1.row][v1.col]
+        most_negative_first = lambda v1, v2: aggro[v1.row][v1.col]-aggro[v2.row][v2.col]
+
+        for row in range(8):
+            for col in range(8):
+                if aggro[row][col] >= 0:
+                    insert(safest_gold_spots, Position(row,col), most_positive_first)
+                if aggro[row][col] <= 0:
+                    insert(safest_silver_spots, Position(row,col), most_negative_first)
+
+        print "Gold territory:", [str(pos) for pos in safest_gold_spots]
+        print "Silver territory:", [str(pos) for pos in safest_silver_spots]
             
 
 # ACTUAL SCORING HAPPENS HERE:
@@ -113,14 +162,42 @@ def score(board):
     for piece in pieces:
         row = piece.position.row
         col = piece.position.col
-        piece.mobility = explore(piece, row, col, 4) #mobility(piece)
+        piece.mobility = 0 if frozen(piece) else explore(piece, row, col, 4) #mobility(piece)
         print piece, piece.mobility
-        print piece, mobility(piece)
         if piece.mobility >= most_mobility:
             most_mobile = piece
             most_mobility = piece.mobility
     print "Most mobile piece: ", most_mobile
+
+    decide(aggro_map)
     
     # Return the scored board
     return aggro_map
+
+def most_mobile_piece(pieces):
+    most_mobility, most_mobile = 0, None
+    for piece in pieces:
+        if piece.mobility > most_mobility:
+            most_mobility = piece.mobility
+            most_mobile = piece
+    return most_mobile
+
+
+
+
+
+# def decide(board, golds_turn):
+#     from decisiontree import *
+#     import questions
+
+#     question = questions.retrieve_for(board, golds_turn)
+
+
+#     tree = DecisionTree()
+#     root = Node(question = question.are_my_rabbits_near_the_goal,   # an open goal spot?
+#                 yes = Node(question = question.are_those_rabbits_mobile, 
+#                             yes = Node(question = question.can_the_rabbit_reach_the_goal,
+#                                         yes = Node(question = question.)
+
+
 
