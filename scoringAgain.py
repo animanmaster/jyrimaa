@@ -12,7 +12,9 @@ def colorizer(value, i = None, j = None):
 
 
 def score(board):
-    PIECES = ('E', 'M', 'H', 'D', 'C', 'R', 'e', 'm', 'h', 'd', 'c', 'r', None)
+    SILVER_PIECES = ('e', 'm', 'h', 'd', 'c', 'r')
+    GOLD_PIECES = ('E', 'M', 'H', 'D', 'C', 'R') 
+    PIECES = GOLD_PIECES + SILVER_PIECES + (None,)
     AGGRO  = ( 32,  16,   8,   4,   2,   1, -32, -16,  -8,  -4,  -2,  -1, 0)
     TRAPS = (Position(2,2), Position(2,5), Position(5,2), Position(5,5))
     PIECE_AGGRO = dict(zip(PIECES, AGGRO))  #maps each piece in PIECES to the corresponding value in AGGRO.
@@ -113,6 +115,14 @@ def score(board):
                 arr[i] = value
                 arr[i+1:] = rest
 
+    # distance = max of 3 bits (max distance is 8), 16 pieces total. 3 * 16 = 48 bits + 12 (for 4 traps) = 60 with 4 bits left over for whatever.
+    def distance_map():
+        dist_map = {}
+        for piece in board.pieces:
+            dist_map[piece] = {}
+            for otherpiece in board.pieces:
+                dist_map[piece][otherpiece] = distance(piece.position, otherpiece.position)
+        return dist_map
 
     def decide(aggro):
         pieces_in_danger = []
@@ -125,10 +135,10 @@ def score(board):
             if (is_gold(piece) and spot_value < 0) or (is_silver(piece) and spot_value > 0): #and abs(spot_value) >= PIECE_AGGRO(piece.char)
                 pieces_in_danger.append(piece)
         
-        print "In Danger:", pieces_in_danger
+        print "In Danger:", [str(piece) for piece in pieces_in_danger]
         
-        most_positive_first = lambda v1, v2: aggro[v2.row][v2.col]-aggro[v1.row][v1.col]
-        most_negative_first = lambda v1, v2: aggro[v1.row][v1.col]-aggro[v2.row][v2.col]
+        most_positive_first = lambda v1, v2: aggro[v1.row][v1.col]-aggro[v2.row][v2.col]
+        most_negative_first = lambda v1, v2: -most_positive_first(v1, v2)
 
         for row in range(8):
             for col in range(8):
@@ -139,6 +149,15 @@ def score(board):
 
         print "Gold territory:", [str(pos) for pos in safest_gold_spots]
         print "Silver territory:", [str(pos) for pos in safest_silver_spots]
+
+        def to_string(the_map):
+            for piece in the_map.keys():
+                print str(piece), "=>"
+                for otherpiece in the_map[piece]:
+                    print "\t", str(otherpiece), "\t(", the_map[piece][otherpiece], ")"
+
+        print "Distance Map:" 
+        to_string(distance_map())
             
 
 # ACTUAL SCORING HAPPENS HERE:
@@ -195,7 +214,7 @@ def most_mobile_piece(pieces):
 
 #     tree = DecisionTree()
 #     root = Node(question = question.are_my_rabbits_near_the_goal,   # an open goal spot?
-#                 yes = Node(question = question.are_those_rabbits_mobile, 
+#                 yes = Node(question = question.are_those_rabbits_mobil:qe, 
 #                             yes = Node(question = question.can_the_rabbit_reach_the_goal,
 #                                         yes = Node(question = question.)
 

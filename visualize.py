@@ -199,6 +199,7 @@ class ScoringSandbox:
         def reloadButton():
             button = JButton("Reload")
             def reload(evt):
+                self.codeArea.text = self.read(self.scoringModule)
                 self.reload()
             button.addActionListener(reload)
             return button
@@ -258,7 +259,7 @@ class ScoringSandbox:
                 filechooser.setFileFilter(pyfilter)
                 if(filechooser.showOpenDialog(self.frame) == JFileChooser.APPROVE_OPTION):
                     self.scoringModule = filechooser.getSelectedFile().getPath()
-                    self.codeArea.text = self.read(self.scoringModule)
+                    self.read(self.scoringModule)
             button.addActionListener(open_file)
             buttonpanel.add(button)
             button = JButton("Save File")

@@ -1,5 +1,16 @@
 from gamedb import *
 
+def colorizer(value, i = None, j = None):
+    #scaling it by 4 so that the colors are more discernible
+    scale_factor = 4
+    value *= scale_factor
+    default = 0
+    return Color((value > 0) and bounded(255 - value) or default,
+                  default,
+                  (value < 0) and bounded(255 + value) or default)
+
+
+
 def score(board):
     PIECES = ('E', 'M', 'H', 'D', 'C', 'R', 'e', 'm', 'h', 'd', 'c', 'r', None)
     AGGRO  = ( 32,  16,   8,   4,   2,   1, -32, -16,  -8,  -4,  -2,  -1, 0)
@@ -60,22 +71,74 @@ def score(board):
     def trap_influence(position):
         influence = 0.0
         for trap in TRAPS:
-            if distance(position, trap) <= 2:	#We don't really care about anything further since you can't be pushed/pulled.
+            dist = distance(position, trap)
+            if dist <= 2:	#We don't really care about anything further since you can't be pushed/pulled.
                 neighboring_pieces = board.surrounding_pieces(position.row, position.col)
                 for piece in neighboring_pieces:
-                    influence += PIECE_AGGRO[piece and piece.char or None]/4
+                    influence += PIECE_AGGRO[piece and piece.char or None]/((dist + 1.0) ** 2)
         return influence
             
-    def explore(row, col, resources_left, initial = True):
+    def explore(piece, row, col, resources_left, initial = True):
         piece_exists = board.find_piece(row, col)
         count = 0 if (initial or piece_exists) else 1
         if initial or (resources_left and not piece_exists):
             resources_left -= 1
-            count += explore(row - 1, col, resources_left, False)   #below
-            count += explore(row, col - 1, resources_left, False)   #left
-            count += explore(row, col + 1, resources_left, False)   #right
-            count += explore(row + 1, col, resources_left, False)   #above
+            if piece.char != 'R':   #Gold rabbits can't move backwards.
+                count += explore(piece, row - 1, col, resources_left, False)   #below
+            count += explore(piece, row, col - 1, resources_left, False)   #left
+            count += explore(piece, row, col + 1, resources_left, False)   #right
+            if piece.char != 'r':   #Silver rabbits can't move backwards.
+                count += explore(piece, row + 1, col, resources_left, False)   #above
+        #else see if you can push/pull?
         return count
+
+    def is_gold(piece):
+        return piece.char.isupper()
+
+    def is_silver(piece):
+        return piece.char.islower()
+
+    def insert(arr, value, compare):
+        if len(arr) == 0:
+            arr.append(value)
+        else:
+            # TODO binary search for index, then insert.
+            i = 0
+            while i < len(arr) and compare(value, arr[i]) < 0:
+                i += 1
+            if i == len(arr):
+                arr.append(value)
+            else:
+                rest = arr[i:]
+                arr[i] = value
+                arr[i+1:] = rest
+
+
+    def decide(aggro):
+        pieces_in_danger = []
+        safest_gold_spots = []
+        safest_silver_spots = []
+
+        for piece in board.pieces:
+            row, col = piece.position.row, piece.position.col
+            spot_value = aggro[row][col]
+            if (is_gold(piece) and spot_value < 0) or (is_silver(piece) and spot_value > 0): #and abs(spot_value) >= PIECE_AGGRO(piece.char)
+                pieces_in_danger.append(piece)
+        
+        print "In Danger:", [str(piece) for piece in pieces_in_danger]
+        
+        most_positive_first = lambda v1, v2: aggro[v1.row][v1.col]-aggro[v2.row][v2.col]
+        most_negative_first = lambda v1, v2: -most_positive_first(v1, v2)
+
+        for row in range(8):
+            for col in range(8):
+                if aggro[row][col] >= 0:
+                    insert(safest_gold_spots, Position(row,col), most_positive_first)
+                if aggro[row][col] <= 0:
+                    insert(safest_silver_spots, Position(row,col), most_negative_first)
+
+        print "Gold territory:", [str(pos) for pos in safest_gold_spots]
+        print "Silver territory:", [str(pos) for pos in safest_silver_spots]
             
 
 # ACTUAL SCORING HAPPENS HERE:
@@ -92,13 +155,49 @@ def score(board):
             for piece in pieces:
                 dist = distance(current_pos, piece.position)
                 if dist <= 4:
-                    aggro_map[i][j] += float(PIECE_AGGRO[piece.char])/(dist + 1.0) #+ trap_influence(current_pos)
+                    aggro_map[i][j] += float(PIECE_AGGRO[piece.char])/((dist + 1.0) ** 2)
+                aggro_map[i][j] += trap_influence(current_pos)
     #Give each piece a mobility
+    most_mobile, most_mobility = None, 0
     for piece in pieces:
         row = piece.position.row
         col = piece.position.col
-        piece.mobility = explore(row, col, 4) #mobility(piece)
+        piece.mobility = 0 if frozen(piece) else explore(piece, row, col, 4) #mobility(piece)
+        print piece, piece.mobility
+        if piece.mobility >= most_mobility:
+            most_mobile = piece
+            most_mobility = piece.mobility
+    print "Most mobile piece: ", most_mobile
+
+    decide(aggro_map)
     
     # Return the scored board
     return aggro_map
+
+def most_mobile_piece(pieces):
+    most_mobility, most_mobile = 0, None
+    for piece in pieces:
+        if piece.mobility > most_mobility:
+            most_mobility = piece.mobility
+            most_mobile = piece
+    return most_mobile
+
+
+
+
+
+# def decide(board, golds_turn):
+#     from decisiontree import *
+#     import questions
+
+#     question = questions.retrieve_for(board, golds_turn)
+
+
+#     tree = DecisionTree()
+#     root = Node(question = question.are_my_rabbits_near_the_goal,   # an open goal spot?
+#                 yes = Node(question = question.are_those_rabbits_mobil:qe, 
+#                             yes = Node(question = question.can_the_rabbit_reach_the_goal,
+#                                         yes = Node(question = question.)
+
+
 
