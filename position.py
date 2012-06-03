@@ -19,8 +19,12 @@ class Position:
     def __init__(self, row, col):
         self.row, self.col = row, col
 
+    @staticmethod
+    def is_this_a_trap(row, col):
+        return ((row == 2 or row == 5) and (col == 2 or col == 5))
+
     def is_a_trap(self):
-        return ((self.row == 2 or self.row == 5) and (self.col == 2 or self.col == 5))
+        return Position.is_it_a_trap(self.row, self.col)
 
     def distance(self, position2): 
         return distance(self, position2)

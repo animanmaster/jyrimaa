@@ -10,7 +10,7 @@ from move import *
 from piece import *
 
 def its_a_trap(row, col):
-    return Position(row, col).is_a_trap()
+    return Position.is_this_a_trap(row, col)
 
 class Board:
     '''The board. Most of the public methods take strings to be directly accessible from AEI and for human consumption.'''
