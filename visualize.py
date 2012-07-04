@@ -11,7 +11,8 @@ import traceback
 
 from gamedb import *
 
-#YAY I GOT RID OF THE AWFULNESS! :D
+#THIS WHOLE MODULE NEEDS SOME SERIOUS CLEANING UP, YOU FOOL.
+
 filechooser = JFileChooser();
 pyfilter = FileNameExtensionFilter("Python script", ["py"])
 dbfilter = FileNameExtensionFilter("Games Database", ["db"])
@@ -194,7 +195,8 @@ class ScoringSandbox:
         f = open(filename, "w")
         f.write(txt)
         f.close()
-        
+    
+    # TODO This is gross and against so many good SE principles. Clean this up eventually.   
     def initGui(self):
         def reloadButton():
             button = JButton("Reload")
@@ -270,14 +272,21 @@ class ScoringSandbox:
                     self.save(self.codeArea.text, self.scoringModule)
             button.addActionListener(save_file)
             buttonpanel.add(button)
+
+            buttonpanel.add(reloadButton())
+
             panel.add(buttonpanel, BorderLayout.SOUTH)
             return panel
+
+        def filterpane():
+            # TODO be able to change what attributes the colors are based on.
+            return JPanel()
 
         self.frame.contentPane.add(make_game_selector(), BorderLayout.NORTH)
         pane = JSplitPane(JSplitPane.HORIZONTAL_SPLIT, make_content_panel(), make_code_editor())
         pane.setDividerLocation(self.frame.width/2)
         self.frame.contentPane.add(pane, BorderLayout.CENTER)
-        self.frame.contentPane.add(reloadButton(), BorderLayout.SOUTH)
+        self.frame.contentPane.add(filterpane(), BorderLayout.SOUTH)
 
     def render(self):
         self.score, self.colorizer = (self.get_scorer(), self.get_colorizer())

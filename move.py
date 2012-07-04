@@ -1,6 +1,7 @@
 from position import *
 from direction import *
 
+
 class Move:
     def __init__(self, move):
         '''
@@ -27,4 +28,3 @@ class Move:
 
     def __str__(self):
         return self.move_str
-
