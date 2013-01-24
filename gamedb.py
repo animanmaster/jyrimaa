@@ -29,6 +29,15 @@ class GameDB:
         else:
             raise ValueError("No valid db provided!")
 
+    def query(self, sql, args=()):
+        if self.cursor:
+            # sqlite3
+            return self.cursor.execute(sql, args)
+        else:
+            # sqlite-jdbc
+            # TODO - figure out how to make prepared statments work similar to sqlite3 above
+            return self.stat.executeQuery(sql)
+
     def get_movelist(self, gameID):
         base_query = "select movelist from games where id="
         if self.cursor:
@@ -43,11 +52,8 @@ class GameDB:
         for move in self.get_moves(turn):
             self.board.undo_move(Move(move))
 
-    #TODO: This method needs to be cleaned up a bit. Too much repeated code.
-    #      Also, handle the case where we only want the setup.
-    def retrieveBoard(self, gameID, turnID):
+    def build_board_from_turns(self, turns, turnID):
         self.board = Board()
-        turns = self.get_movelist(gameID).split("\\n")
         turnNum = 0
         setting_up = True
 
@@ -64,7 +70,7 @@ class GameDB:
                         #undo last turn
                         self.takeback(turns[turnNum - 1])
                     else:
-                        self.board.place(move[0], move[1:])
+                        self.board.place(str(move[0]), move[1:])
                 turnNum += 1
 
         #Apply moves
@@ -84,6 +90,13 @@ class GameDB:
                     else:
                         self.board.apply_move(Move(move))
                 turnNum += 1
-
+        # BAD
+        self.turnIndexOfBoard = turnNum
         return self.board
+
+    #TODO: This method needs to be cleaned up a bit. Too much repeated code.
+    #      Also, handle the case where we only want the setup.
+    def retrieveBoard(self, gameID, turnID):
+        turns = self.get_movelist(gameID).split("\\n")
+        return self.build_board_from_turns(turns, turnID)
 
