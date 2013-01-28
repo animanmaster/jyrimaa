@@ -49,7 +49,7 @@ class GameDB:
         return turn.split(" ")
 
     def takeback(self, turn):
-        for move in self.get_moves(turn):
+        for move in self.get_moves(turn)[1:]:
             self.board.undo_move(Move(move))
 
     def build_board_from_turns(self, turns, turnID):
@@ -90,8 +90,8 @@ class GameDB:
                     else:
                         self.board.apply_move(Move(move))
                 turnNum += 1
-        # BAD
-        self.turnIndexOfBoard = turnNum
+        
+        self.board.turn_index = turnNum
         return self.board
 
     #TODO: This method needs to be cleaned up a bit. Too much repeated code.
