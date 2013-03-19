@@ -69,7 +69,7 @@ class GameDB:
                     if move == "takeback":
                         #undo last turn
                         self.takeback(turns[turnNum - 1])
-                    else:
+                    elif move:
                         self.board.place(str(move[0]), move[1:])
                 turnNum += 1
 
@@ -81,6 +81,7 @@ class GameDB:
 
             if turn_id == turnID:
                 setting_up = False
+                self.board.moves = moves
             else:
                 for move in moves:
                     #print "Applying", move
