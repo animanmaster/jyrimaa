@@ -7,54 +7,12 @@ def all_moves(db):
     for movelist in db.query('select movelist from games'):
         yield movelist
 
-class Turn:
-    def __init__(self, turn_string):
-        moves = turn_string.split(' ')
-        self.turn_id = moves[0]
-        self.moves = moves[1:]
-
-    def __str__(self):
-        return "[{0}] {1}\n".format(self.turn_id, self.moves)
-
-
-# from ctypes import *
-
-# class PieceData(Structure):
-#     distance_array = lambda size: (c_ubyte * size)
-#     _fields_ = [
-#         ('piece', c_char),  # the piece character (like 'r')
-#         ('location', c_char_p), # the piece location (like 'a8')
-#         ('stronger_distances', distance_array(14)), # each byte has num_friends|num_enemies at the index's distance.
-#         ('weaker_distances', distance_array(14)), # same as above, but for weaker pieces.
-#         ('trap_distances', distance_array(4)), # how far each trap is, sorted by closest.
-#         ('boundary_distances', distance_array(4)) # how far the n, w, s, e boundaries are.
-#     ]
-
-    
-#     def combine_byte_strings(self, size, *args):
-#         base = ''
-#         for arg in args:
-#             base += base + string_at(addressof(arg), sizeof(c_byte * size))
-#         return base
-
-#     def combine_four_byte_strings(self, *args):
-#       return self.combine_byte_strings(4, *args)
-
-#     def get_filtered_state(self):
-#         return self.combine_four_byte_strings(self.stronger_distances,
-#                                          self.weaker_distances,
-#                                          self.trap_distances,
-#                                          self.boundary_distances) #should we look at boundaries, too?
-
-
 PIECES = ('E', 'M', 'H', 'D', 'C', 'R', 'e', 'm', 'h', 'd', 'c', 'r', None)
 AGGRO  = ( 32,  16,   8,   4,   2,   1, -32, -16,  -8,  -4,  -2,  -1, 0)
-
-TRAPS = ((2,2), (2,5), (5,2), (5,5))
-
 PIECE_AGGRO = dict(zip(PIECES, AGGRO))
-
+TRAPS = (Position(2,2), Position(2,5), Position(5,2), Position(5,5))
 STRENGTH_ORDER = 'EMHDCR'
+
 def is_stronger_than(piece, otherpiece):
     return otherpiece and (STRENGTH_ORDER.index(piece.char.upper()) < STRENGTH_ORDER.index(otherpiece.char.upper()))
 
@@ -73,23 +31,15 @@ def distance_map(board):
             dist_map[piece][otherpiece] = distance(piece.position, otherpiece.position)
     return dist_map
 
-TRAPS = (Position(2,2), Position(2,5), Position(5,2), Position(5,5))
-
 def c_ubyteify(array):
-    return array #(c_ubyte * len(array))(*array)
+    return array
 
 class PieceData:
-    def __init__(self): #, piece, location, stronger_distances, weaker_distances, trap_distances, boundary_distances):
+    def __init__(self):
         self.stronger_enemies = [0] * 14
         self.stronger_friends = [0] * 14
         self.weaker_enemies = [0] * 14
         self.weaker_friends = [0] * 14
-        # self.piece = piece
-        # self.location = location
-        # self.stronger_distances = stronger_distances
-        # self.weaker_distances = weaker_distances
-        # self.trap_distances = trap_distances
-        # self.boundary_distances = boundary_distances
 
     def add_friend(self, is_weaker, distance):
         if is_weaker:
@@ -136,8 +86,6 @@ class PieceData:
 
 
 def calculate_piece_data(board, piece):
-    # stronger_distances = [0] * 14
-    # weaker_distances = [0] * 14
     trap_distances = [distance(piece.position, trap) for trap in TRAPS]
     trap_distances.sort() # Should the specific trap we're talking about matter, or is it just the distance to a trap that matters?
     boundary_distances = [piece.position.col, 7 - piece.position.col, piece.position.row, 7 - piece.position.row]
@@ -169,20 +117,11 @@ def get_piece_data(board):
     data = []
     for piece in board.pieces:
         piece_data = calculate_piece_data(board, piece)
-        #import pdb; pdb.set_trace()
-        # piece_data = PieceData(piece.char, 
-        #                       str(piece.position),
-        #                       c_ubyteify(stronger_distances),
-        #                       c_ubyteify(weaker_distances),
-        #                       c_ubyteify(trap_distances),
-        #                       c_ubyteify(boundary_distances)
-        #             )
         data.append(piece_data)
     return data
 
-IMPORTANT_HASHES = {}
-
-def note(noted, game_id, turn_id, piece_data, moves = None):
+def note(noted, board, game_id, turn_id, moves = None):
+    piece_data = get_piece_data(board)
     pieces_moved = {}
     if moves:
         for move in moves:
@@ -190,7 +129,8 @@ def note(noted, game_id, turn_id, piece_data, moves = None):
     for pd in piece_data:
         string = pd.get_filtered_state()
         if (pd.piece + pd.location) in pieces_moved:
-            IMPORTANT_HASHES[string] = True
+            # This piece was moved.
+            pass
         data = "%s %s %s%s" % (str(game_id), str(turn_id), str(pd.piece), str(pd.location))
         if string in noted:
             noted[string].add(data)
@@ -231,9 +171,9 @@ def printInterestingThings(encountered):
                     actual.add(similar)
 
         if len(actual) > 1:
-            print "%s: " % value, (value in IMPORTANT_HASHES and IMPORTANT_HASHES[value] or '') #.encode('hex')
+            print "%s: " % value
             # print_info_about(encountered[value])
-            print "\t", actual#encountered[value]
+            print "\t", actual
 
 def collectStatistics(encountered):
     pass
@@ -241,8 +181,6 @@ def collectStatistics(encountered):
 if __name__ == '__main__':
     sys.excepthook = info
     ## end of http://code.activestate.com/recipes/65287/ }}}
-
-
 
     db = GameDB('./games.db')
     #outfile = open('./gamestates.out', 'a')
@@ -261,7 +199,7 @@ if __name__ == '__main__':
         for turn in turns[turnNum:]:
             moves = db.get_moves(turn)
             turn_id = moves.pop(0) or turn_id
-            note(encountered, game_id, turn_id, get_piece_data(board), moves)
+            note(encountered, board, game_id, turn_id, moves)
             for move in moves:
                 if move == 'takeback':
                     db.takeback(turns[turnNum - 1])
@@ -269,7 +207,7 @@ if __name__ == '__main__':
                     board.apply_move(Move(move))
             turnNum += 1
         if game_id and turn_id:
-            note(encountered, game_id, turn_id, get_piece_data(board))
+            note(encountered, board, game_id, turn_id)
 
     printInterestingThings(encountered)
     # collectStatistics(encountered)
