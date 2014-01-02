@@ -1,7 +1,9 @@
 
 from gamedb import *
 import pdb
-import marshal
+import cPickle as pickle
+
+GAME_LIMIT = 500
 
 def all_moves(db):
     for movelist in db.query('select movelist from games'):
@@ -31,15 +33,13 @@ def distance_map(board):
             dist_map[piece][otherpiece] = distance(piece.position, otherpiece.position)
     return dist_map
 
-def c_ubyteify(array):
-    return array
-
 class PieceData:
     def __init__(self):
         self.stronger_enemies = [0] * 14
         self.stronger_friends = [0] * 14
         self.weaker_enemies = [0] * 14
         self.weaker_friends = [0] * 14
+        self.hashed = None
 
     def add_friend(self, is_weaker, distance):
         if is_weaker:
@@ -53,12 +53,13 @@ class PieceData:
         else:
             self.stronger_enemies[distance - 1] += 1
 
-    def get_filtered_state(self):
-        stronger = ''.join([('%02d%02d' % (self.stronger_enemies[i], self.stronger_friends[i])) for i in range(4)])
-        weaker = ''.join([('%02d%02d' % (self.weaker_enemies[i], self.weaker_friends[i])) for i in range(4)])
-        traps = ''.join([d <= 4 and ('%02d' % d) or '00' for d in self.trap_distances])
-        boundaries = ''.join([d <= 4 and ('%02d' % d) or '00' for d in self.boundary_distances])
-        return ''.join([stronger, weaker, traps, boundaries])
+    def get_filtered_state(self, radius=4):
+        stronger = ''.join([('%02d%02d' % (self.stronger_enemies[i], self.stronger_friends[i])) for i in range(radius)])
+        weaker = ''.join([('%02d%02d' % (self.weaker_enemies[i], self.weaker_friends[i])) for i in range(radius)])
+        traps = ''.join([d <= radius and ('%02d' % d) or '00' for d in self.trap_distances])
+        boundaries = ''.join([d <= radius and ('%02d' % d) or '00' for d in self.boundary_distances])
+        self.hashed = ''.join([stronger, weaker, traps, boundaries])
+        return self.hashed
 
     def __str__(self):
         return """<html>
@@ -86,6 +87,8 @@ class PieceData:
 
 
 def calculate_piece_data(board, piece):
+    if not isinstance(piece, Piece):
+        piece = board.get_piece(piece)
     trap_distances = [distance(piece.position, trap) for trap in TRAPS]
     trap_distances.sort() # Should the specific trap we're talking about matter, or is it just the distance to a trap that matters?
     boundary_distances = [piece.position.col, 7 - piece.position.col, piece.position.row, 7 - piece.position.row]
@@ -120,40 +123,49 @@ def get_piece_data(board):
         data.append(piece_data)
     return data
 
-def note(noted, board, game_id, turn_id, moves = None):
+MOVED_DATA = {}
+class TurnData:
+    def __init__(self, identifier):
+        self.identifier = identifier
+        self.moves = {}
+
+    def update(self, before_piece_data, after_piece_data, move_number):
+        if move_number in self.moves:
+            raise Exception("Huh, apparently move_number %s already was set to %s. [game_id: %s, turn_id: %s]" % (move_number, self.moves[move_number], game_id, turn_id))
+        else:
+            self.moves[move_number] = (before_piece_data, after_piece_data)
+
+def note_moved_piece(identifier, before_piece_data, after_piece_data, move_number=0):
+    if identifier not in MOVED_DATA:
+        MOVED_DATA[identifier] = TurnData(identifier)
+    MOVED_DATA[identifier].update(before_piece_data, after_piece_data, move_number)
+
+PD_PER_TURN = {}
+def note(noted, board, game_id, turn_id, game_data=(), moves = None):
     piece_data = get_piece_data(board)
-    pieces_moved = {}
-    if moves:
-        for move in moves:
-            pieces_moved[str(move)[0:3]] = True
+    key = (game_id, game_data)
+    if key not in PD_PER_TURN:
+        PD_PER_TURN[key] = []
+    PD_PER_TURN[key].append(
+        (turn_id, piece_data
+            #'|'.join(map(lambda pd: pd.get_filtered_state(14), piece_data))
+        )
+    )
+    # pieces_moved = {}
+    # if moves:
+    #     for move in moves:
+    #         pieces_moved[str(move)[0:3]] = True
     for pd in piece_data:
         string = pd.get_filtered_state()
-        if (pd.piece + pd.location) in pieces_moved:
-            # This piece was moved.
-            pass
+        # if (pd.piece + pd.location) in pieces_moved:
+        #     # This piece was moved in this turn
+        #     note_moved_piece(game_id, turn_id, pd)
         data = "%s %s %s%s" % (str(game_id), str(turn_id), str(pd.piece), str(pd.location))
         if string in noted:
             noted[string].add(data)
         else:
             noted[string] = set([data])
-        
-
-## {{{ http://code.activestate.com/recipes/65287/ (r5)
-# code snippet, to be included in 'sitecustomize.py'
-import sys
-
-def info(type, value, tb):
-   # if hasattr(sys, 'ps1') or not sys.stderr.isatty():
-   #    # we are in interactive mode or we don't have a tty-like
-   #    # device, so we call the default hook
-   #    sys.__excepthook__(type, value, tb)
-   # else:
-  import traceback
-  # we are NOT in interactive mode, print the exception...
-  traceback.print_exception(type, value, tb)
-  print
-  # ...then start the debugger in post-mortem mode.
-  pdb.pm()
+  
 
 def printInterestingThings(encountered):
     for value in encountered:
@@ -173,10 +185,99 @@ def printInterestingThings(encountered):
         if len(actual) > 1:
             print "%s: " % value
             # print_info_about(encountered[value])
-            print "\t", actual
+            print "\t", actual  
 
-def collectStatistics(encountered):
-    pass
+def printTurnStatistics():
+    turn_hashes = {}
+    equivalent_moves = dict(map(lambda r: [r, 0], range(14))) # indexed by radius
+    total_number_of_turns = 0
+    hash_for_radius = map(lambda radius: (lambda pd: pd.get_filtered_state(radius)), range(14))
+    winning_moves = {}
+    win_percentages = {}
+    for game_id, game_data in PD_PER_TURN:
+        turns = PD_PER_TURN[game_id, game_data]
+        total_number_of_turns += len(turns)
+        wrating, brating, result = game_data
+        ratings = dict(w=wrating, b=brating, d=0)
+        for index in range(len(turns)):
+            if index < len(turns) - 1:
+                turn_id, before_piece_data = turns[index]
+                player = turn_id[-1]
+                _, after_piece_data = turns[index + 1]
+                player_won = player == result
+                value = (game_id, turn_id)
+                for radius in range(14):
+                    before_set = set(map(hash_for_radius[radius], before_piece_data))
+                    after_set = set(map(hash_for_radius[radius], after_piece_data))
+                    before_and_after = (str(before_set - after_set), str(after_set - before_set))
+                    winner_bonus = (player_won and 1 or -1) * int(ratings[player]) * float(radius)/13.0
+                    if before_and_after in turn_hashes:
+                        turn_hashes[before_and_after].append(value)
+                        equivalent_moves[radius] += 1
+                        win_percentages[before_and_after] += int(player_won)
+                        winning_moves[before_and_after] += winner_bonus
+                    else:
+                        turn_hashes[before_and_after] = [value]
+                        win_percentages[before_and_after] = int(player_won)
+                        winning_moves[before_and_after] = winner_bonus
+
+    print 'Lemme show you some of the more interesting results I have found:'
+    for before_and_after, values in turn_hashes.iteritems():
+        if len(values) >= 2:
+            print before_and_after, ':'
+            print "\t", values
+
+    print "Over", total_number_of_turns, "turns..."
+    print "Total number of unique (before, after) hashes:", len(equivalent_moves.keys())
+    print "Number of cases where turn deltas matched per radius:"
+    for radius in equivalent_moves:
+        value = equivalent_moves[radius]
+        print "\t Radius", radius + 1, ":", value, '[', (float(value)/float(total_number_of_turns) * 100), '% ]'
+
+    awesome_ones = set()
+    print "Win percentages per unique (before, after) hash:"
+    for before_and_after, number_of_wins in win_percentages.iteritems():
+        percentage = float(number_of_wins)/float(len(turn_hashes[before_and_after])) * 100.0
+        print percentage, "%:"
+        print "\t", map(lambda x: str(x[0]) + ' ' + str(x[1]), turn_hashes[before_and_after])
+        if percentage >= 50.0 and len(turn_hashes[before_and_after]) > 2:
+            awesome_ones.add((before_and_after, percentage))
+
+    print "Over 50%% win-rate and more than two examples:"
+    for before_and_after, percentage in awesome_ones:
+        print percentage, '%:'
+        print "\t", map(lambda x: str(x[0]) + ' ' + str(x[1]), turn_hashes[before_and_after])
+
+    print "Best plays by rating:"
+    for before_and_after, rating in sorted(winning_moves.iteritems(), key=lambda x: x[-1], reverse=True):
+        print rating, ':'
+        print "\t", map(lambda x: str(x[0]) + ' ' + str(x[1]), turn_hashes[before_and_after])
+
+
+def exportData(data_to_export):
+    for filename, obj in data_to_export:
+        print "Exporting hash to %s" % filename
+        f = open(filename % GAME_LIMIT, 'w')
+        pickle.dump(obj, f)
+        f.close()
+
+
+## {{{ http://code.activestate.com/recipes/65287/ (r5)
+# code snippet, to be included in 'sitecustomize.py'
+import sys
+
+def info(type, value, tb):
+   # if hasattr(sys, 'ps1') or not sys.stderr.isatty():
+   #    # we are in interactive mode or we don't have a tty-like
+   #    # device, so we call the default hook
+   #    sys.__excepthook__(type, value, tb)
+   # else:
+  import traceback
+  # we are NOT in interactive mode, print the exception...
+  traceback.print_exception(type, value, tb)
+  print
+  # ...then start the debugger in post-mortem mode.
+  pdb.pm()
 
 if __name__ == '__main__':
     sys.excepthook = info
@@ -186,35 +287,44 @@ if __name__ == '__main__':
     #outfile = open('./gamestates.out', 'a')
     encountered = {}
     num_games = 0
-    for result_set in db.query('select id, movelist from games where movelist not like "%takeback%" and movelist not like "%resign%" limit 1000'):
+    for result_set in db.query('select id, wrating, brating, result, movelist from games where movelist not like "%takeback%" and movelist not like "%resign%" limit ' + str(GAME_LIMIT)):
         num_games += 1
-        game_id = result_set[0]
+        game_id, wrating, brating, result, movelist = result_set
         print "Examining game", game_id
-        movelist = result_set[-1]
         turns = movelist.split("\\n")
         board = db.build_board_from_turns(turns, '2w')
+        game_data = (wrating, brating, result)
 
         turnNum = board.turn_index
         turn_id = '1b'
         for turn in turns[turnNum:]:
             moves = db.get_moves(turn)
             turn_id = moves.pop(0) or turn_id
-            note(encountered, board, game_id, turn_id, moves)
-            for move in moves:
+            note(encountered, board, game_id, turn_id, game_data, moves)
+            number_of_moves = len(moves)
+            for move_index, move in enumerate(moves):
                 if move == 'takeback':
                     db.takeback(turns[turnNum - 1])
                 elif move:
-                    board.apply_move(Move(move))
+                    move = Move(move)
+                    before_piece_data = board.calculate_piece_data(move.old_position)
+                    oldpiece, piece_moved = board.apply_move(move)
+                    note_moved_piece((game_id, turn_id),
+                                     before_piece_data,
+                                     piece_moved and board.calculate_piece_data(move.new_position) or None,
+                                     move_index + 1)
+
             turnNum += 1
         if game_id and turn_id:
-            note(encountered, board, game_id, turn_id)
+            note(encountered, board, game_id, turn_id, game_data)
 
-    printInterestingThings(encountered)
-    # collectStatistics(encountered)
+    # printInterestingThings(encountered)
+    printTurnStatistics()
 
     print "Examined", num_games, "games"
-    print "Exporting encountered hash to encounteredhash.marshal"
-    f = open('encounteredhash.marshal', 'w')
-    marshal.dump(encountered, f)
-    f.close()
-
+    # exportData((
+    #     ('encounteredhash%d.pickle', encountered),
+    #     ('move_data%d.pickle', MOVED_DATA),
+    #     # ('pd_per_turn%d.pickle', PD_PER_TURN)
+    #     )
+    # )

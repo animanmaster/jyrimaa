@@ -38,7 +38,7 @@ class Board:
         self.spots[row][col] = piece
         piece.position.row, piece.position.col = row, col
         self.pieces.append(piece)
-        return oldpiece
+        return oldpiece, piece
 
     def get_piece(self, pos):
         '''Return whatever is at the spot given by this position'''
@@ -69,7 +69,10 @@ class Board:
 
         piece = self.clear(move.old_position)
         if move.direction != Direction.DEAD:
-            self.place(piece, move.new_position)
+            oldpiece, piece = self.place(piece, move.new_position)
+        else:
+            piece = None
+        return oldpiece, piece
 
     def undo_move(self, move):
         '''Reverse a move and apply it.'''

@@ -10,8 +10,10 @@ except ImportError:
 
 from board import *
 
-#TODO: Optimize! Too many inefficiencies out of laziness. :P
+class EndOfGameError(Exception):
+    pass
 
+#TODO: Optimize! Too many inefficiencies out of laziness. :P
 class GameDB:
 
     def __init__(self, strDb):
@@ -100,4 +102,36 @@ class GameDB:
     def retrieveBoard(self, gameID, turnID):
         turns = self.get_movelist(gameID).split("\\n")
         return self.build_board_from_turns(turns, turnID)
+
+
+    #TODO: This method needs to be cleaned up a bit. Too much repeated code.
+    #      Also, handle the case where we only want the setup.
+    def retrieveAEIBoard(self, gameID, turnID):
+        from aei.pyrimaa import board as aei_board
+        turns = self.get_movelist(gameID).split("\\n")
+        last_board = None
+        current_board = aei_board.Position(aei_board.Color.GOLD, 4, aei_board.BLANK_BOARD)
+        turn_id = ''
+        for turn in turns:
+            split_index = turn.find(' ')
+            if split_index == -1:
+                turn_id, moves = turn.strip(), ''
+            else:
+                turn_id, moves = turn[0:split_index+1].strip(), turn[split_index+1:].strip()
+
+            if moves == 'takeback':
+                current_board = last_board
+            elif turn_id == turnID:
+                return current_board
+            elif not moves:
+                raise EndOfGameError('No moves for turn %s' % turn_id)
+            else:
+                last_board = current_board
+                try:
+                    current_board = current_board.do_move_str(moves)
+                except:
+                    print "turn_id: %s, moves: %s" % (turn_id, moves)
+                    raise
+        else:
+            raise ValueError('Could not find turnID %s in gameID %s' % (turnID, gameID))
 
