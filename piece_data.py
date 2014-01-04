@@ -1,10 +1,12 @@
 
 class PieceData:
+    MAX_RADIUS = 14
+
     def __init__(self):
-        self.stronger_enemies = [0] * 14
-        self.stronger_friends = [0] * 14
-        self.weaker_enemies = [0] * 14
-        self.weaker_friends = [0] * 14
+        self.stronger_enemies = [0] * MAX_RADIUS
+        self.stronger_friends = [0] * MAX_RADIUS
+        self.weaker_enemies = [0] * MAX_RADIUS
+        self.weaker_friends = [0] * MAX_RADIUS
         self.hashed = None
 
     def add_friend(self, is_weaker, distance):
@@ -19,13 +21,19 @@ class PieceData:
         else:
             self.stronger_enemies[distance - 1] += 1
 
-    def get_filtered_state(self, radius=4):
-        stronger = ''.join([('%02d%02d' % (self.stronger_enemies[i], self.stronger_friends[i])) for i in range(radius)])
-        weaker = ''.join([('%02d%02d' % (self.weaker_enemies[i], self.weaker_friends[i])) for i in range(radius)])
-        traps = ''.join([d <= radius and ('%02d' % d) or '00' for d in self.trap_distances])
-        boundaries = ''.join([d <= radius and ('%02d' % d) or '00' for d in self.boundary_distances])
-        self.hashed = ''.join([stronger, weaker, traps, boundaries])
-        return self.hashed
+    def get_hash(self, radius=None):
+        if not self.hashed:
+            zipped = zip(self.stronger_friends, self.weaker_friends, self.stronger_enemies, self.weaker_enemies)
+            values = []
+            for r in range(MAX_RADIUS):
+                # Note r's range is [0, MAX_RADIUS), so r is actually the actual radius - 1.
+                for radius_value in zipped[r]:
+                    values.append('%02d' % radius_value)
+                # Append the number of boundaries at this range.
+                values.append(str(self.boundary_distances.count(r)))
+                values.append(str(self.trap_distances.count(r)))
+            self.hashed = ''.join(values)
+        return self.hashed[0:(radius and 10 * radius or None)]
 
     def __str__(self):
         return """<html>
@@ -48,5 +56,10 @@ class PieceData:
         </tr><tr>
         <td>Boundary Distances:</td>
             <td>%s</td>
-        </tr></table></html>
-        """ % (self.stronger_friends, self.stronger_enemies, self.weaker_friends, self.weaker_enemies, self.trap_distances, self.boundary_distances)
+        </tr><tr>
+        <td>Full Hash:</td>
+            <td>%s</td>
+        </tr>
+        </table></html>
+        """ % (self.stronger_friends, self.stronger_enemies, self.weaker_friends, self.weaker_enemies,
+               self.trap_distances, self.boundary_distances, self.get_hash())
