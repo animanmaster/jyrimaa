@@ -23,6 +23,12 @@ class PieceData:
         else:
             self.stronger_enemies[distance - 1] += 1
 
+    def get_filtered_state(self, radius=4):
+        '''
+        For backwards compatibility with old code, this method is essentially get_hash with a default of r=4
+        '''
+        return self.get_hash(radius)
+
     def get_hash(self, radius=None):
         '''
         Hex data hash for this PieceData. The structure for a given radius will be like so in binary:
