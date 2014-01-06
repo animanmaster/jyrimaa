@@ -1,4 +1,6 @@
+from functools import total_ordering
 
+@total_ordering
 class PieceData:
     MAX_RADIUS = 14
 
@@ -42,13 +44,6 @@ class PieceData:
 
         (total of 3 bytes [6 hex characters] to represent each aspect in the given radius)
 
-
-        >>> pd.stronger_friends = [0, 0, 1, 0, 0, 1, 1, 2, 0, 0, 1, 5, 0, 0]
-        >>> pd.weaker_friends   = [0, 2, 0, 10, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-        >>> pd.stronger_enemies = [2, 0, 3, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1]
-        >>> pd.weaker_enemies   = [0, 1, 1, 0, 1, 0, 0, 0, 8, 0, 0, 4, 0, 0]
-        >>> pd.boundary_distances = [3, 3, 4, 4]
-        >>> pd.trap_distances     = [1, 3, 4, 7]
         >>> pd.get_hash() # 00.00.02.00.0.1|00.02.00.01.0.0|01.00.03.01.2.1|00.10.00.00.2.1|00.01.01.01.0.0|01.00.00.00.0.0|01.00.00.00.0.1|02.00.00.00.0.0|00.00.00.08.0.0|00.00.00.00.0.0|01.00.00.00.0.0|05.00.00.04.0.0|00.00.00.00.0.0|00.00.01.00.0.0
         '0020010201001031210a0021011100100000100001200000000800000000100000500400000000001000'
         >>> pd.get_hash(4)
@@ -71,16 +66,66 @@ class PieceData:
         '''
         Return hashes for all radiuses between [1,MAX_RADIUS] inclusive.
 
-        >>> pd.stronger_friends = [0, 0, 1, 0, 0, 1, 1, 2, 0, 0, 1, 5, 0, 0]
-        >>> pd.weaker_friends   = [0, 2, 0, 10, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-        >>> pd.stronger_enemies = [2, 0, 3, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1]
-        >>> pd.weaker_enemies   = [0, 1, 1, 0, 1, 0, 0, 0, 8, 0, 0, 4, 0, 0]
-        >>> pd.boundary_distances = [3, 3, 4, 4]
-        >>> pd.trap_distances     = [1, 3, 4, 7]
         >>> pd.radial_hashes()
         ['002001', '002001020100', '002001020100103121', '0020010201001031210a0021', '0020010201001031210a0021011100', '0020010201001031210a0021011100100000', '0020010201001031210a0021011100100000100001', '0020010201001031210a0021011100100000100001200000', '0020010201001031210a0021011100100000100001200000000800', '0020010201001031210a0021011100100000100001200000000800000000', '0020010201001031210a0021011100100000100001200000000800000000100000', '0020010201001031210a0021011100100000100001200000000800000000100000500400', '0020010201001031210a0021011100100000100001200000000800000000100000500400000000', '0020010201001031210a0021011100100000100001200000000800000000100000500400000000001000']
         '''
         return map(lambda r: self.get_hash(r+1), range(self.MAX_RADIUS))
+
+    def __eq__(self, other):
+        '''
+        Return hashes for all radiuses between [1,MAX_RADIUS] inclusive.
+
+        >>> pd2 = PieceData()
+        >>> pd2.stronger_friends = pd.stronger_friends
+        >>> pd2.weaker_friends   = pd.weaker_friends
+        >>> pd2.stronger_enemies = pd.stronger_enemies
+        >>> pd2.weaker_enemies   = pd.weaker_enemies
+        >>> pd2.boundary_distances = pd.boundary_distances
+        >>> pd2.trap_distances     = pd.trap_distances
+
+        >>> pd == pd2
+        True
+        >>> pd2 == pd
+        True
+
+        >>> pd2.stronger_enemies = [0] * len(pd2.stronger_enemies)
+        >>> pd2.hashed = None
+        >>> pd2 == pd
+        False
+        >>> pd == pd2
+        False
+        '''
+        return isinstance(other, PieceData) and self.get_hash() == other.get_hash() or False
+
+    def __lt__(self, other):
+        '''
+        Return hashes for all radiuses between [1,MAX_RADIUS] inclusive.
+
+        >>> pd2 = PieceData()
+        >>> pd2.stronger_friends = pd.stronger_friends
+        >>> pd2.weaker_friends   = pd.weaker_friends
+        >>> pd2.stronger_enemies = pd.stronger_enemies
+        >>> pd2.weaker_enemies   = pd.weaker_enemies
+        >>> pd2.boundary_distances = pd.boundary_distances
+        >>> pd2.trap_distances     = pd.trap_distances
+
+        >>> pd < pd2
+        False
+        >>> pd2 < pd
+        False
+
+        >>> pd2.stronger_enemies = [0] * len(pd2.stronger_enemies)
+        >>> pd2.hashed = None
+        >>> pd2 < pd
+        True
+        >>> pd < pd2
+        False
+        >>> sorted([pd2, pd]) == [pd2, pd]
+        True
+        >>> sorted([pd, pd2]) == [pd2, pd]
+        True
+        '''
+        return isinstance(other, PieceData) and self.get_hash() < other.get_hash() or False
 
     def __str__(self):
         return """<html>
@@ -113,4 +158,11 @@ class PieceData:
 
 if __name__ == "__main__":
     import doctest
-    doctest.testmod(extraglobs={'pd': PieceData()})
+    pd = PieceData()
+    pd.stronger_friends = [0, 0, 1, 0, 0, 1, 1, 2, 0, 0, 1, 5, 0, 0]
+    pd.weaker_friends   = [0, 2, 0, 10, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+    pd.stronger_enemies = [2, 0, 3, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1]
+    pd.weaker_enemies   = [0, 1, 1, 0, 1, 0, 0, 0, 8, 0, 0, 4, 0, 0]
+    pd.boundary_distances = [3, 3, 4, 4]
+    pd.trap_distances     = [1, 3, 4, 7]
+    doctest.testmod(extraglobs={'pd': pd})
