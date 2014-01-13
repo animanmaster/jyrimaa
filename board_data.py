@@ -24,6 +24,14 @@ class BoardData:
 		'''
 		return ''.join((pd.get_hash(radius) for pd in self.piece_data))
 
+	def apply_moves(self, moves):
+		'''
+		Apply the given moves to the board.
+		'''
+		for move in moves:
+			self.board.apply_move(Move(move))
+		self._piece_data = None
+
 
 
 if __name__ == "__main__":
