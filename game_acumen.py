@@ -27,7 +27,7 @@ class GameAcumen:
 				if minimum is None or normalized_value < minimum:
 					minimum = normalized_value
 					min_moves = [state_hash]
-				elif normalized_value == minimum
+				elif normalized_value == minimum:
 					min_moves.append(state_hash)
 
 				if maximum is None or normalized_value > maximum:
@@ -58,7 +58,7 @@ class GameAcumen:
 		#self.evaluator = evaluator
 
 	def calculate_hashes(self, board_data):
-		return [board.hash_value(radius + 1) for radius in range(PieceData.MAX_RADIUS)]
+		return [board_data.hash_value(radius + 1) for radius in range(PieceData.MAX_RADIUS)]
 
 	def calculate_move_value(self, game_data, player):
 		wrating, brating, winner = game_data
@@ -72,7 +72,7 @@ class GameAcumen:
 		return player_rating * multiplier
 
 	def save_move(self, before_hashes, after_hashes, move_value):
-		for before_hash, after_hash in itertools.izip(before_hashes, after_hashes:
+		for before_hash, after_hash in itertools.izip(before_hashes, after_hashes):
 			if before_hash not in self.knowledgebase:
 				self.knowledgebase[before_hash] = GameAcumen.LearnedMoves()
 			self.knowledgebase[before_hash].update(after_hash, move_value)
