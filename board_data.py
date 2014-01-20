@@ -1,9 +1,9 @@
 from piece_data import PieceData
 
 class BoardData:
-	def __init__(self, board, player):
+	def __init__(self, board): #, player):
 		self.board = board
-		self.player = player
+		#self.player = player
 		self._piece_data = None
 
 	@property
