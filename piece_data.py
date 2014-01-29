@@ -3,6 +3,7 @@ from functools import total_ordering
 @total_ordering
 class PieceData:
     MAX_RADIUS = 14
+    BASE_SIZE = 6
 
     def __init__(self):
         self.stronger_enemies = [0] * self.MAX_RADIUS
@@ -12,6 +13,7 @@ class PieceData:
         self.trap_distances = []
         self.boundary_distances = []
         self.hashed = None
+        self.chunked = None
 
     def add_friend(self, is_weaker, distance):
         if is_weaker:
@@ -30,6 +32,18 @@ class PieceData:
         For backwards compatibility with old code, this method is essentially get_hash with a default of r=4
         '''
         return self.get_hash(radius)
+
+    def chunked_full_hash(self):
+        '''
+        Return the full hash split by radius so that each index represents the piece data at radius=index+1.
+
+        >>> pd.chunked_full_hash()
+        ['002001', '020100', '103121', '0a0021', '011100', '100000', '100001', '200000', '000800', '000000', '100000', '500400', '000000', '001000']
+        '''
+        if not self.chunked:
+            hash_string = self.get_hash()
+            self.chunked = [hash_string[start:start+self.BASE_SIZE] for start in range(0, len(hash_string), self.BASE_SIZE)]
+        return self.chunked
 
     def get_hash(self, radius=None):
         '''
@@ -60,7 +74,7 @@ class PieceData:
                 values.append(hex(self.boundary_distances.count(r+1))[-1])
                 values.append(hex(self.trap_distances.count(r+1))[-1])
             self.hashed = ''.join(values)
-        return radius and self.hashed[0:(6 * radius)] or self.hashed
+        return radius and self.hashed[0:(self.BASE_SIZE * radius)] or self.hashed
 
     def radial_hashes(self):
         '''
